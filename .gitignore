@@ -1,0 +1,30 @@
+# Binari dan hasil build
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.out
+
+# Environment: kredensial tidak boleh di-commit
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Service account Firebase
+/secrets/
+
+# Penyimpanan berkas lokal (STORAGE_LOCAL_DIR)
+/storage/
+/uploads/
+
+# Log
+*.log
+
+# IDE
+.idea/
+.vscode/

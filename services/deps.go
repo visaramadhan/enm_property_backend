@@ -41,6 +41,7 @@ type Services struct {
 	User         *UserService
 	Partner      *PartnerService
 	Plan         *PlanService
+	Category     *CategoryService
 	Agreement    *AgreementService
 	Subscription *SubscriptionService
 	Payment      *PaymentService
@@ -63,19 +64,19 @@ func NewServices(deps Deps) *Services {
 	subscription := &SubscriptionService{deps: deps, settings: setting}
 	property := &PropertyService{deps: deps, subscriptions: subscription}
 	payment := &PaymentService{
-		deps: deps,
-		// partners:      partner,
-		// agreements:    agreement,
-		// subscriptions: subscription,
-		// settings:      setting,
+		deps:          deps,
+		partners:      partner,
+		agreements:    agreement,
+		subscriptions: subscription,
+		settings:      setting,
 	}
 	catalog := &CatalogService{deps: deps, settings: setting}
 	media := &MediaService{deps: deps}
 	favorite := &FavoriteService{deps: deps}
 	report := &ReportService{
-		deps: deps,
-		// subscriptions: subscription,
-		// properties:    property,
+		deps:          deps,
+		subscriptions: subscription,
+		properties:    property,
 	}
 
 	services := &Services{
@@ -83,6 +84,7 @@ func NewServices(deps Deps) *Services {
 		User:         &UserService{deps: deps},
 		Partner:      partner,
 		Plan:         &PlanService{deps: deps},
+		Category:     &CategoryService{deps: deps},
 		Agreement:    agreement,
 		Subscription: subscription,
 		Payment:      payment,
@@ -95,9 +97,10 @@ func NewServices(deps Deps) *Services {
 		Audit:        audit,
 	}
 	services.Scheduler = &SchedulerService{
-		deps: deps,
-		// subscriptions: subscription,
-		// payments:      payment,
+		deps:          deps,
+		subscriptions: subscription,
+		payments:      payment,
+		logger:        newSchedulerLogger(deps),
 	}
 	return services
 }

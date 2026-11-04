@@ -20,6 +20,7 @@ type Store struct {
 	users         map[string]*models.User
 	partners      map[string]*models.Partner
 	plans         map[string]*models.Plan
+	categories    map[string]*models.Category
 	agreements    map[string]*models.Agreement
 	acceptances   map[string]*models.AgreementAcceptance
 	subscriptions map[string]*models.Subscription
@@ -39,6 +40,7 @@ func NewStore() *Store {
 		users:         make(map[string]*models.User),
 		partners:      make(map[string]*models.Partner),
 		plans:         make(map[string]*models.Plan),
+		categories:    make(map[string]*models.Category),
 		agreements:    make(map[string]*models.Agreement),
 		acceptances:   make(map[string]*models.AgreementAcceptance),
 		subscriptions: make(map[string]*models.Subscription),
@@ -100,6 +102,14 @@ func copyPlan(in *models.Plan) *models.Plan {
 	return &out
 }
 
+func copyCategory(in *models.Category) *models.Category {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	return &out
+}
+
 func copyAgreement(in *models.Agreement) *models.Agreement {
 	if in == nil {
 		return nil
@@ -149,6 +159,7 @@ func copyProperty(in *models.Property) *models.Property {
 	out.Facilities = copyStrings(in.Facilities)
 	out.PublishedAt = copyTime(in.PublishedAt)
 	out.DeletedAt = copyTime(in.DeletedAt)
+	out.BoostUntil = copyTime(in.BoostUntil)
 	if in.Photos != nil {
 		out.Photos = make([]models.PropertyPhoto, len(in.Photos))
 		for i := range in.Photos {

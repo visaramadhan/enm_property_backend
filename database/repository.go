@@ -106,6 +106,17 @@ type PlanRepository interface {
 	List(q ListQuery) ([]*models.Plan, int, error)
 }
 
+// CategoryRepository menangani kategori properti untuk katalog dan master data.
+type CategoryRepository interface {
+	Create(category *models.Category) error
+	Update(category *models.Category) error
+	Delete(id string) error
+	GetByID(id string) (*models.Category, error)
+	GetBySlug(slug string) (*models.Category, error)
+	SlugExists(slug, excludeID string) bool
+	List(q ListQuery) ([]*models.Category, int, error)
+}
+
 // AgreementRepository menangani versi perjanjian dan bukti persetujuannya.
 type AgreementRepository interface {
 	Create(agreement *models.Agreement) error
@@ -194,6 +205,7 @@ type Repositories struct {
 	Users         UserRepository
 	Partners      PartnerRepository
 	Plans         PlanRepository
+	Categories    CategoryRepository
 	Agreements    AgreementRepository
 	Subscriptions SubscriptionRepository
 	Orders        OrderRepository
@@ -210,6 +222,7 @@ func NewMemoryRepositories(store *Store) Repositories {
 		Users:         &memoryUserRepository{store: store},
 		Partners:      &memoryPartnerRepository{store: store},
 		Plans:         &memoryPlanRepository{store: store},
+		Categories:    &memoryCategoryRepository{store: store},
 		Agreements:    &memoryAgreementRepository{store: store},
 		Subscriptions: &memorySubscriptionRepository{store: store},
 		Orders:        &memoryOrderRepository{store: store},

@@ -19,19 +19,9 @@ const bearerPrefix = "Bearer "
 // misalnya POST /auth/session.
 func Authenticate(client *firebase.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		raw := bearerToken(c)
-		if raw == "" {
-			httpx.Abort(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Header Authorization tidak ditemukan")
+		if !verifyToken(c, client) {
 			return
 		}
-
-		token, err := client.VerifyIDToken(c.Request.Context(), raw)
-		if err != nil {
-			httpx.Respond(c, err)
-			return
-		}
-
-		c.Set(contextTokenKey, token)
 		c.Next()
 	}
 }
@@ -39,42 +29,68 @@ func Authenticate(client *firebase.Client) gin.HandlerFunc {
 // LoadUser memuat baris pengguna berdasarkan klaim token dan menolak akun nonaktif.
 func LoadUser(users UserReader) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := Token(c)
-		if token == nil {
-			httpx.Abort(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Sesi tidak ditemukan")
+		if !attachUser(c, users) {
 			return
 		}
-
-		user, err := users.GetByFirebaseUID(token.UID)
-		if err != nil {
-			if database.IsNotFound(err) {
-				httpx.Abort(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Sesi pengguna tidak ditemukan, silakan masuk kembali")
-				return
-			}
-			httpx.Respond(c, httpx.Internal(err))
-			return
-		}
-		if !user.IsActive() {
-			httpx.Abort(c, http.StatusForbidden, httpx.CodeForbidden, "Akun Anda sedang dinonaktifkan")
-			return
-		}
-
-		SetUser(c, user)
 		c.Next()
 	}
 }
 
-// FirebaseAuth menggabungkan verifikasi token dan pemuatan pengguna aktif.
+// FirebaseAuth menggabungkan verifikasi token dan pemuatan pengguna aktif dalam satu
+// middleware sehingga handler selalu menerima konteks pengguna yang lengkap.
 func FirebaseAuth(client *firebase.Client, users UserReader) gin.HandlerFunc {
-	authenticate := Authenticate(client)
-	loadUser := LoadUser(users)
 	return func(c *gin.Context) {
-		authenticate(c)
-		if c.IsAborted() {
+		if !verifyToken(c, client) || !attachUser(c, users) {
 			return
 		}
-		loadUser(c)
+		c.Next()
 	}
+}
+
+// verifyToken memvalidasi header Authorization dan menaruh klaim token pada konteks.
+// Mengembalikan false bila permintaan sudah digagalkan dan c.Next() tidak boleh dipanggil.
+func verifyToken(c *gin.Context, client *firebase.Client) bool {
+	raw := bearerToken(c)
+	if raw == "" {
+		httpx.Abort(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Header Authorization tidak ditemukan")
+		return false
+	}
+
+	token, err := client.VerifyIDToken(c.Request.Context(), raw)
+	if err != nil {
+		httpx.Respond(c, err)
+		return false
+	}
+
+	c.Set(contextTokenKey, token)
+	return true
+}
+
+// attachUser memuat baris pengguna dari klaim token yang sudah diverifikasi dan
+// menaruh pengguna aktif pada konteks.
+func attachUser(c *gin.Context, users UserReader) bool {
+	token := Token(c)
+	if token == nil {
+		httpx.Abort(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Sesi tidak ditemukan")
+		return false
+	}
+
+	user, err := users.GetByFirebaseUID(token.UID)
+	if err != nil {
+		if database.IsNotFound(err) {
+			httpx.Abort(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Sesi pengguna tidak ditemukan, silakan masuk kembali")
+			return false
+		}
+		httpx.Respond(c, httpx.Internal(err))
+		return false
+	}
+	if !user.IsActive() {
+		httpx.Abort(c, http.StatusForbidden, httpx.CodeForbidden, "Akun Anda sedang dinonaktifkan")
+		return false
+	}
+
+	SetUser(c, user)
+	return true
 }
 
 // RequireRole membatasi akses berdasarkan peran. Pengguna berperan owner

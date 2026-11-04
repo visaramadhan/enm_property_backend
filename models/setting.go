@@ -9,6 +9,8 @@ const (
 	SettingSubscriptionAlertDay = "subscription_alert_days"
 	SettingContactFallback      = "contact_fallback_whatsapp"
 	SettingAgreementEnabled     = "agreement_required"
+	SettingSiteLogoURL          = "site_logo_url"
+	SettingLoginImageURL        = "login_image_url"
 )
 
 // Setting adalah pengaturan sistem berbentuk pasangan kunci-nilai.

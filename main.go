@@ -1,175 +1,142 @@
+// Command enmproperty-api menjalankan HTTP server backend ENMProperty.
+//
+// Alur startup: memuat konfigurasi, menyiapkan logger, lapisan data, integrasi
+// platform (Firebase, Midtrans, penyimpanan media), merakit service dan router,
+// lalu menjalankan server dengan graceful shutdown beserta job terjadwal.
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
-	"strconv"
+	"os"
+	"os/signal"
 	"strings"
-	"time"
+	"syscall"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"enmproperty/backend/config"
+	"enmproperty/backend/database"
+	"enmproperty/backend/migrations"
+	"enmproperty/backend/platform/firebase"
+	"enmproperty/backend/platform/logger"
+	"enmproperty/backend/platform/midtrans"
+	"enmproperty/backend/platform/storage"
+	"enmproperty/backend/router"
+	"enmproperty/backend/services"
 )
 
-type Property struct {
-	ID        int       `json:"id"`
-	Name      string    `json:"name"`
-	Location  string    `json:"location"`
-	Price     float64   `json:"price"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-type apiResponse struct {
-	Success bool        `json:"success"`
-	Message string      `json:"message,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
-}
-
-var properties = []Property{
-	{ID: 1, Name: "Villa Maju", Location: "Bandung", Price: 2500000000, Status: "Available", CreatedAt: time.Now()},
-	{ID: 2, Name: "Apartemen Harmoni", Location: "Jakarta", Price: 1800000000, Status: "Booked", CreatedAt: time.Now()},
-}
-
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", healthHandler)
-	mux.HandleFunc("/api/properties", propertiesHandler)
-	mux.HandleFunc("/api/properties/", propertyDetailHandler)
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("gagal memuat konfigurasi: %v", err)
+	}
+
+	appLogger := logger.New(cfg.Log)
+	if cfg.IsProduction() {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	ctx := context.Background()
+
+	// Lapisan data dipilih berdasarkan DB_DRIVER. Repository berada di balik
+	// interface sehingga service maupun handler tidak terpengaruh.
+	var (
+		pool  *pgxpool.Pool
+		repos database.Repositories
+	)
+
+	if cfg.UseMemoryStore() {
+		// Mode in-memory: data contoh dimuat agar pengembangan tanpa PostgreSQL
+		// tetap dapat berjalan.
+		store := database.NewStore()
+		database.Seed(store)
+		repos = database.NewMemoryRepositories(store)
+	} else {
+		// Mode PostgreSQL: siapkan pool pgx dan (bila diminta) terapkan migrasi.
+		pool, err = database.NewPostgresPool(ctx, cfg.Database)
+		if err != nil {
+			appLogger.Fatal().Err(err).Msg("gagal menyiapkan pool PostgreSQL")
+		}
+		defer pool.Close()
+
+		if cfg.Database.AutoMigrate {
+			if err := migrations.Run(ctx, pool); err != nil {
+				appLogger.Fatal().Err(err).Msg("gagal menjalankan migrasi basis data")
+			}
+		}
+		repos = database.NewPostgresRepositories(pool)
+	}
+
+	firebaseClient, err := firebase.New(ctx, cfg.Firebase, cfg.Auth)
+	if err != nil {
+		appLogger.Fatal().Err(err).Msg("gagal menyiapkan klien Firebase")
+	}
+	midtransClient := midtrans.New(cfg.Midtrans)
+
+	mediaStorage, err := storage.New(cfg.Storage, cfg.Firebase)
+	if err != nil {
+		appLogger.Fatal().Err(err).Msg("gagal menyiapkan penyimpanan media")
+	}
+
+	svc := services.NewServices(services.Deps{
+		Repos:    repos,
+		Config:   cfg,
+		Firebase: firebaseClient,
+		Midtrans: midtransClient,
+		Storage:  mediaStorage,
+	})
+
+	engine := router.New(router.Deps{
+		Config:   cfg,
+		Services: svc,
+		Repos:    repos,
+		Firebase: firebaseClient,
+		Midtrans: midtransClient,
+		Logger:   appLogger,
+	})
+
+	// Foto yang disimpan pada driver lokal disajikan langsung oleh server.
+	if strings.EqualFold(cfg.Storage.Driver, "local") {
+		engine.Static("/uploads", cfg.Storage.LocalDir)
+	}
+
+	if err := svc.Scheduler.Start(); err != nil {
+		appLogger.Error().Err(err).Msg("scheduler gagal dijalankan")
+	}
 
 	server := &http.Server{
-		Addr:              ":8080",
-		Handler:           withCORS(mux),
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		IdleTimeout:       15 * time.Second,
+		Addr:         ":" + cfg.HTTP.Port,
+		Handler:      engine,
+		ReadTimeout:  cfg.HTTP.ReadTimeout,
+		WriteTimeout: cfg.HTTP.WriteTimeout,
+		IdleTimeout:  cfg.HTTP.IdleTimeout,
 	}
 
-	fmt.Println("Server started on http://localhost:8080")
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatal(err)
-	}
-}
-
-func withCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
+	go func() {
+		appLogger.Info().
+			Str("port", cfg.HTTP.Port).
+			Str("env", cfg.App.Env).
+			Bool("memory_store", cfg.UseMemoryStore()).
+			Msg("server enmproperty berjalan")
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			appLogger.Fatal().Err(err).Msg("server berhenti karena kesalahan")
 		}
+	}()
 
-		next.ServeHTTP(w, r)
-	})
-}
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+	<-shutdown
 
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, apiResponse{Success: false, Message: "Method not allowed"})
-		return
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		appLogger.Error().Err(err).Msg("gagal menghentikan server dengan rapi")
 	}
-
-	writeJSON(w, http.StatusOK, apiResponse{
-		Success: true,
-		Message: "Backend is running",
-		Data: map[string]string{
-			"status": "ok",
-			"time":   time.Now().Format(time.RFC3339),
-		},
-	})
-}
-
-func propertiesHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		writeJSON(w, http.StatusOK, apiResponse{Success: true, Data: properties})
-	case http.MethodPost:
-		var payload Property
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			writeJSON(w, http.StatusBadRequest, apiResponse{Success: false, Message: "Invalid JSON body"})
-			return
-		}
-
-		if strings.TrimSpace(payload.Name) == "" || strings.TrimSpace(payload.Location) == "" {
-			writeJSON(w, http.StatusBadRequest, apiResponse{Success: false, Message: "Name and location are required"})
-			return
-		}
-
-		payload.ID = nextPropertyID()
-		payload.CreatedAt = time.Now()
-		properties = append(properties, payload)
-
-		writeJSON(w, http.StatusCreated, apiResponse{Success: true, Message: "Property created", Data: payload})
-	default:
-		writeJSON(w, http.StatusMethodNotAllowed, apiResponse{Success: false, Message: "Method not allowed"})
-	}
-}
-
-func propertyDetailHandler(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/properties/")
-	if path == "" || path == "/api/properties" {
-		writeJSON(w, http.StatusNotFound, apiResponse{Success: false, Message: "Property not found"})
-		return
-	}
-
-	id, err := strconv.Atoi(path)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, apiResponse{Success: false, Message: "Invalid property ID"})
-		return
-	}
-
-	for i := range properties {
-		if properties[i].ID == id {
-			switch r.Method {
-			case http.MethodGet:
-				writeJSON(w, http.StatusOK, apiResponse{Success: true, Data: properties[i]})
-			case http.MethodPut, http.MethodPatch:
-				var payload Property
-				if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-					writeJSON(w, http.StatusBadRequest, apiResponse{Success: false, Message: "Invalid JSON body"})
-					return
-				}
-
-				if strings.TrimSpace(payload.Name) == "" || strings.TrimSpace(payload.Location) == "" {
-					writeJSON(w, http.StatusBadRequest, apiResponse{Success: false, Message: "Name and location are required"})
-					return
-				}
-
-				properties[i].Name = payload.Name
-				properties[i].Location = payload.Location
-				properties[i].Price = payload.Price
-				properties[i].Status = payload.Status
-				writeJSON(w, http.StatusOK, apiResponse{Success: true, Message: "Property updated", Data: properties[i]})
-			case http.MethodDelete:
-				properties = append(properties[:i], properties[i+1:]...)
-				writeJSON(w, http.StatusOK, apiResponse{Success: true, Message: "Property deleted"})
-			default:
-				writeJSON(w, http.StatusMethodNotAllowed, apiResponse{Success: false, Message: "Method not allowed"})
-			}
-			return
-		}
-	}
-
-	writeJSON(w, http.StatusNotFound, apiResponse{Success: false, Message: "Property not found"})
-}
-
-func nextPropertyID() int {
-	maxID := 0
-	for _, property := range properties {
-		if property.ID > maxID {
-			maxID = property.ID
-		}
-	}
-	return maxID + 1
-}
-
-func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
-		log.Printf("failed to encode response: %v", err)
-	}
+	svc.Scheduler.Stop(shutdownCtx)
+	appLogger.Info().Msg("server dihentikan")
 }

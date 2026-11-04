@@ -59,13 +59,17 @@ type CodeParam struct {
 }
 
 // PropertyIDParam adalah parameter path berisi ID properti.
+//
+// Router memakai nama parameter ":id" agar seluruh route bersarang pada
+// /properties dapat memakai penamaan wildcard yang sama (Gin menolak nama
+// wildcard berbeda pada posisi path yang sama).
 type PropertyIDParam struct {
-	PropertyID string `uri:"propertyId" validate:"required"`
+	PropertyID string `uri:"id" validate:"required"`
 }
 
 // PhotoIDParam adalah parameter path berisi ID foto.
 type PhotoIDParam struct {
-	PropertyID string `uri:"propertyId" validate:"required"`
+	PropertyID string `uri:"id" validate:"required"`
 	PhotoID    string `uri:"photoId" validate:"required"`
 }
 

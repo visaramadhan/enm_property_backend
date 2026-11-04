@@ -99,6 +99,18 @@ func (s *SettingService) SiteName() string {
 	return firstNonEmpty(s.GetValue(models.SettingSiteName), s.deps.Config.App.Name)
 }
 
+// SiteLogoURL mengembalikan URL logo situs. Nilai kosong berarti antarmuka
+// memakai monogram bawaan dari nama situs.
+func (s *SettingService) SiteLogoURL() string {
+	return s.GetValue(models.SettingSiteLogoURL)
+}
+
+// LoginImageURL mengembalikan URL gambar panel area autentikasi (masuk dan
+// daftar). Nilai kosong berarti panel memakai latar gradien bawaan.
+func (s *SettingService) LoginImageURL() string {
+	return s.GetValue(models.SettingLoginImageURL)
+}
+
 // loadCache membaca nilai cache tanpa menyentuh repository.
 func (s *SettingService) loadCache(key string) (string, bool) {
 	s.mu.RLock()

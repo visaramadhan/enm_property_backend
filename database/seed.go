@@ -12,6 +12,7 @@ import (
 const (
 	SeedUserSuperadmin = "usr-superadmin"
 	SeedUserAdmin      = "usr-admin"
+	SeedUserOwner      = "usr-owner"
 	SeedUserMitraBali  = "usr-mitra-bali"
 	SeedUserMitraJogja = "usr-mitra-jogja"
 	SeedUserCustomer   = "usr-customer"
@@ -23,13 +24,19 @@ const (
 	SeedPlanStandar = "pln-standar"
 	SeedPlanPremium = "pln-premium"
 
+	SeedCategoryRumah     = "cat-rumah"
+	SeedCategoryApartemen = "cat-apartemen"
+	SeedCategoryTanah     = "cat-tanah"
+	SeedCategoryRuko      = "cat-ruko"
+	SeedCategoryVilla     = "cat-villa"
+
 	SeedAgreement = "agr-2026-01"
 )
 
 // Seed mengisi Store dengan data contoh yang mencerminkan alur nyata: satu
-// superadmin, satu admin, dua mitra dengan langganan, dan beberapa properti.
-// Panggilan berulang akan menimpa data yang sama sehingga aman dipanggil saat
-// pengembangan.
+// superadmin, satu admin, satu owner, dua mitra dengan langganan, dan beberapa
+// properti. Panggilan berulang akan menimpa data yang sama sehingga aman
+// dipanggil saat pengembangan.
 func Seed(store *Store) {
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -39,6 +46,7 @@ func Seed(store *Store) {
 
 	seedUsers(store, today)
 	seedPlans(store, today)
+	seedCategories(store, today)
 	seedAgreement(store, today)
 	seedPartners(store, today)
 	seedSubscriptions(store, today)
@@ -59,6 +67,12 @@ func seedUsers(store *Store, today time.Time) {
 		{
 			ID: SeedUserAdmin, FirebaseUID: "dev-admin", Email: "admin@enmproperty.id",
 			Name: "Rani Admin", Phone: "+6281100000002", Role: models.RoleAdmin,
+			Status: models.UserStatusActive, EmailVerified: true, LastLoginAt: &lastLogin,
+			CreatedAt: today.AddDate(0, -8, 0), UpdatedAt: today,
+		},
+		{
+			ID: SeedUserOwner, FirebaseUID: "dev-owner", Email: "owner@enmproperty.id",
+			Name: "Yusuf Pemilik", Phone: "+6281100000003", Role: models.RoleOwner,
 			Status: models.UserStatusActive, EmailVerified: true, LastLoginAt: &lastLogin,
 			CreatedAt: today.AddDate(0, -8, 0), UpdatedAt: today,
 		},
@@ -91,24 +105,48 @@ func seedPlans(store *Store, today time.Time) {
 		{
 			ID: SeedPlanFree, Slug: "gratis", Name: "Gratis", Description: "Paket uji coba untuk mitra baru.",
 			Price: 0, DurationDays: 30, ListingQuota: 3, IsFree: true, IsActive: true, SortOrder: 1,
+			Level: 1, BoostEnabled: false,
+			// Paket gratis tidak memperoleh akses pengaturan keyword, katalog, dan nomor WA.
+			KeywordAccess: false, CatalogAccess: false, WhatsAppAccess: false,
 			Features:  []string{"3 listing aktif", "Masa aktif 30 hari", "Dukungan email"},
 			CreatedAt: today.AddDate(0, -8, 0), UpdatedAt: today,
 		},
 		{
 			ID: SeedPlanStandar, Slug: "standar", Name: "Standar", Description: "Cocok untuk agen properti perorangan.",
 			Price: 750000, DurationDays: 90, ListingQuota: 15, IsActive: true, SortOrder: 2,
-			Features:  []string{"15 listing aktif", "Masa aktif 90 hari", "Statistik tayangan", "Dukungan WhatsApp"},
+			Level: 2, BoostEnabled: true,
+			KeywordAccess: true, CatalogAccess: true, WhatsAppAccess: true,
+			Features:  []string{"15 listing aktif", "Masa aktif 90 hari", "Statistik tayangan", "Akses pengaturan keyword", "Akses pengaturan katalog", "Akses pengaturan nomor WA", "Dukungan WhatsApp"},
 			CreatedAt: today.AddDate(0, -8, 0), UpdatedAt: today,
 		},
 		{
 			ID: SeedPlanPremium, Slug: "premium", Name: "Premium", Description: "Untuk agensi dengan banyak listing.",
 			Price: 1500000, DurationDays: 90, ListingQuota: 25, IsActive: true, SortOrder: 3,
-			Features:  []string{"25 listing aktif", "Masa aktif 90 hari", "Prioritas review", "Statistik lanjutan", "Dukungan prioritas"},
+			Level: 3, BoostEnabled: true,
+			KeywordAccess: true, CatalogAccess: true, WhatsAppAccess: true,
+			Features:  []string{"25 listing aktif", "Masa aktif 90 hari", "Prioritas review", "Boost listing level 3", "Statistik lanjutan", "Dukungan prioritas"},
 			CreatedAt: today.AddDate(0, -8, 0), UpdatedAt: today,
 		},
 	}
 	for _, plan := range plans {
+		plan.ApplyAccessRules()
 		store.plans[plan.ID] = copyPlan(plan)
+	}
+}
+
+// seedCategories mengisi kategori properti awal untuk katalog dan master data.
+func seedCategories(store *Store, today time.Time) {
+	categories := []*models.Category{
+		{ID: SeedCategoryRumah, Slug: "rumah", Name: "Rumah", Description: "Rumah tinggal, cluster, dan hunian keluarga.", SortOrder: 1, IsActive: true},
+		{ID: SeedCategoryApartemen, Slug: "apartemen", Name: "Apartemen", Description: "Unit apartemen dan kondominium.", SortOrder: 2, IsActive: true},
+		{ID: SeedCategoryTanah, Slug: "tanah", Name: "Tanah", Description: "Kavling tanah dan lahan siap bangun.", SortOrder: 3, IsActive: true},
+		{ID: SeedCategoryRuko, Slug: "ruko", Name: "Ruko", Description: "Rumah toko dan ruang usaha komersial.", SortOrder: 4, IsActive: true},
+		{ID: SeedCategoryVilla, Slug: "villa", Name: "Villa", Description: "Villa dan properti liburan.", SortOrder: 5, IsActive: true},
+	}
+	for _, category := range categories {
+		category.CreatedAt = today.AddDate(0, -8, 0)
+		category.UpdatedAt = today
+		store.categories[category.ID] = copyCategory(category)
 	}
 }
 
@@ -205,11 +243,14 @@ func seedProperties(store *Store, today time.Time) {
 				Slug: "villa-seminyak-modern", Title: "Villa Seminyak Modern",
 				Description: "Villa dua lantai dengan kolam renang pribadi, lima menit dari Pantai Seminyak.",
 				ListingType: models.ListingTypeSale, PropertyType: models.PropertyTypeVilla,
+				CategoryID: SeedCategoryVilla,
 				Address: "Jl. Kayu Aya No. 12", City: "Badung", Province: "Bali", District: "Seminyak",
 				Latitude: -8.6833, Longitude: 115.1667, Price: 4500000000,
 				LandArea: 300, BuildingArea: 240, Bedrooms: 4, Bathrooms: 3,
 				Facilities: []string{"Kolam renang", "Carport", "Keamanan 24 jam", "Taman"},
 				UnitsTotal: 1, UnitsAvailable: 1, Status: models.PropertyStatusActive, Views: 862,
+				ContactCount: 42, BoostActive: true, BoostUntil: timePtr(today.AddDate(0, 0, 14)),
+				RatingCount: 12, RatingAvg: 4.8, FavoriteCount: 45,
 				PublishedAt: timePtr(today.AddDate(0, -2, 0)),
 				CreatedAt:   today.AddDate(0, -2, 0), UpdatedAt: today,
 			},
@@ -224,11 +265,13 @@ func seedProperties(store *Store, today time.Time) {
 				Slug: "rumah-cluster-sentul", Title: "Rumah Cluster Sentul",
 				Description: "Rumah modern minimalis dalam cluster dengan akses tol dan area hijau.",
 				ListingType: models.ListingTypeSale, PropertyType: models.PropertyTypeHouse,
+				CategoryID: SeedCategoryRumah,
 				Address: "Cluster Sentul City Blok B2", City: "Bogor", Province: "Jawa Barat", District: "Sentul",
 				Latitude: -6.5670, Longitude: 106.8547, Price: 1250000000,
 				LandArea: 120, BuildingArea: 90, Bedrooms: 3, Bathrooms: 2,
 				Facilities: []string{"Keamanan 24 jam", "Taman", "Playground"},
 				UnitsTotal: 1, UnitsAvailable: 1, Status: models.PropertyStatusPendingReview,
+				ContactCount: 5, RatingCount: 3, RatingAvg: 4.2, FavoriteCount: 8,
 				CreatedAt: today.AddDate(0, 0, -6), UpdatedAt: today,
 			},
 			photos: []seedPhoto{{url: "https://images.unsplash.com/photo-1568605114967-8130f3a36994", primary: true}},
@@ -239,11 +282,13 @@ func seedProperties(store *Store, today time.Time) {
 				Slug: "ruko-pusat-kota-solo", Title: "Ruko Pusat Kota Solo",
 				Description: "Ruko tiga lantai di kawasan bisnis strategis dengan parkir luas.",
 				ListingType: models.ListingTypeRent, PropertyType: models.PropertyTypeRuko, PricePeriod: models.PricePeriodYearly,
+				CategoryID: SeedCategoryRuko,
 				Address: "Jl. Slamet Riyadi No. 210", City: "Surakarta", Province: "Jawa Tengah", District: "Laweyan",
 				Latitude: -7.5666, Longitude: 110.8167, Price: 180000000,
 				LandArea: 100, BuildingArea: 240, Bedrooms: 0, Bathrooms: 3,
 				Facilities: []string{"Parkir luas", "Listrik 3 fase"},
 				UnitsTotal: 2, UnitsAvailable: 1, Status: models.PropertyStatusActive, Views: 415,
+				ContactCount: 18, RatingCount: 6, RatingAvg: 4.5, FavoriteCount: 12,
 				PublishedAt: timePtr(today.AddDate(0, -3, 0)),
 				CreatedAt:   today.AddDate(0, -3, 0), UpdatedAt: today,
 			},
@@ -255,11 +300,13 @@ func seedProperties(store *Store, today time.Time) {
 				Slug: "tanah-kavling-ungaran", Title: "Tanah Kavling Ungaran",
 				Description: "Kavling tanah siap bangun dengan akses jalan aspal dan pemandangan pegunungan.",
 				ListingType: models.ListingTypeSale, PropertyType: models.PropertyTypeLand,
+				CategoryID: SeedCategoryTanah,
 				Address: "Jl. Raya Ungaran KM 3", City: "Semarang", Province: "Jawa Tengah", District: "Ungaran",
 				Latitude: -7.1387, Longitude: 110.4031, Price: 650000000,
 				LandArea: 200, BuildingArea: 0, Bedrooms: 0, Bathrooms: 0,
 				Facilities: []string{"Akses jalan aspal", "Sertifikat SHM"},
 				UnitsTotal: 4, UnitsAvailable: 2, Status: models.PropertyStatusExpired, Views: 96,
+				RatingCount: 1, RatingAvg: 4.0, FavoriteCount: 3,
 				CreatedAt: today.AddDate(0, -4, 0), UpdatedAt: today,
 			},
 			photos: []seedPhoto{{url: "https://images.unsplash.com/photo-1500382017468-9049fed747ef", primary: true}},
@@ -286,6 +333,8 @@ func seedSettings(store *Store, now time.Time) {
 		{Key: models.SettingSubscriptionAlertDay, Value: "7", Description: "Ambang hari peringatan sebelum langganan berakhir.", UpdatedAt: now},
 		{Key: models.SettingContactFallback, Value: "+6281100000000", Description: "Nomor fallback bila mitra belum mengisi kontak.", UpdatedAt: now},
 		{Key: models.SettingAgreementEnabled, Value: "true", Description: "Wajib menyetujui perjanjian sebelum mengunggah listing.", UpdatedAt: now},
+		{Key: models.SettingSiteLogoURL, Value: "", Description: "URL logo situs. Kosongkan untuk memakai monogram nama situs.", UpdatedAt: now},
+		{Key: models.SettingLoginImageURL, Value: "https://images.unsplash.com/photo-1497366216548-37526070297c", Description: "URL gambar panel area masuk dan daftar. Kosongkan untuk latar gradien bawaan.", UpdatedAt: now},
 	}
 	for _, setting := range settings {
 		store.settings[setting.Key] = copySetting(setting)

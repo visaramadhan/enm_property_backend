@@ -89,9 +89,16 @@ func (s *PlanService) Create(req dto.CreatePlanRequest) (dto.PlanView, error) {
 		IsFree:       req.IsFree || req.Price == 0,
 		IsActive:     req.IsActive,
 		SortOrder:    req.SortOrder,
+		Level:        req.Level,
+		BoostEnabled: req.BoostEnabled,
+		KeywordAccess:  req.KeywordAccess,
+		CatalogAccess:  req.CatalogAccess,
+		WhatsAppAccess: req.WhatsAppAccess,
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}
+	// Paket gratis tidak boleh memiliki akses lanjutan maupun boost.
+	plan.ApplyAccessRules()
 	if err := s.deps.Repos.Plans.Create(plan); err != nil {
 		return dto.PlanView{}, httpx.Conflict("Paket tidak dapat disimpan, slug mungkin sudah dipakai")
 	}
@@ -135,6 +142,23 @@ func (s *PlanService) Update(id string, req dto.UpdatePlanRequest) (dto.PlanView
 	if req.SortOrder != nil {
 		plan.SortOrder = *req.SortOrder
 	}
+	if req.Level != nil {
+		plan.Level = *req.Level
+	}
+	if req.BoostEnabled != nil {
+		plan.BoostEnabled = *req.BoostEnabled
+	}
+	if req.KeywordAccess != nil {
+		plan.KeywordAccess = *req.KeywordAccess
+	}
+	if req.CatalogAccess != nil {
+		plan.CatalogAccess = *req.CatalogAccess
+	}
+	if req.WhatsAppAccess != nil {
+		plan.WhatsAppAccess = *req.WhatsAppAccess
+	}
+	// Aturan paket gratis ditegakkan terakhir agar tidak dapat dilanggar API.
+	plan.ApplyAccessRules()
 	plan.UpdatedAt = timeNow()
 
 	if err := s.deps.Repos.Plans.Update(plan); err != nil {

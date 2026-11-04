@@ -22,8 +22,16 @@ type PlanView struct {
 	IsFree       bool      `json:"is_free"`
 	IsActive     bool      `json:"is_active"`
 	SortOrder    int       `json:"sort_order"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	// Level menentukan prioritas tampil di katalog (makin tinggi makin atas).
+	Level int `json:"level"`
+	// BoostEnabled menandakan paket boleh memakai fitur boost listing.
+	BoostEnabled bool `json:"boost_enabled"`
+	// Akses pengaturan lanjutan sisi mitra. Paket gratis selalu false.
+	KeywordAccess  bool      `json:"keyword_access"`
+	CatalogAccess  bool      `json:"catalog_access"`
+	WhatsAppAccess bool      `json:"whatsapp_access"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // NewPlanView membentuk tampilan paket dari entitas domain.
@@ -49,6 +57,11 @@ func NewPlanView(plan *models.Plan) PlanView {
 		IsFree:       plan.IsFree,
 		IsActive:     plan.IsActive,
 		SortOrder:    plan.SortOrder,
+		Level:        plan.Level,
+		BoostEnabled: plan.BoostEnabled,
+		KeywordAccess:  plan.KeywordAccess,
+		CatalogAccess:  plan.CatalogAccess,
+		WhatsAppAccess: plan.WhatsAppAccess,
 		CreatedAt:    plan.CreatedAt,
 		UpdatedAt:    plan.UpdatedAt,
 	}
@@ -75,6 +88,11 @@ type CreatePlanRequest struct {
 	IsFree       bool     `json:"is_free"`
 	IsActive     bool     `json:"is_active"`
 	SortOrder    int      `json:"sort_order" validate:"gte=0"`
+	Level        int      `json:"level" validate:"omitempty,gte=1,lte=99"`
+	BoostEnabled bool     `json:"boost_enabled"`
+	KeywordAccess  bool `json:"keyword_access"`
+	CatalogAccess  bool `json:"catalog_access"`
+	WhatsAppAccess bool `json:"whatsapp_access"`
 }
 
 // UpdatePlanRequest adalah body PUT /admin/packages/{id}.
@@ -88,6 +106,11 @@ type UpdatePlanRequest struct {
 	IsFree       *bool    `json:"is_free"`
 	IsActive     *bool    `json:"is_active"`
 	SortOrder    *int     `json:"sort_order" validate:"omitempty,gte=0"`
+	Level        *int     `json:"level" validate:"omitempty,gte=1,lte=99"`
+	BoostEnabled *bool    `json:"boost_enabled"`
+	KeywordAccess  *bool `json:"keyword_access"`
+	CatalogAccess  *bool `json:"catalog_access"`
+	WhatsAppAccess *bool `json:"whatsapp_access"`
 }
 
 // SetPlanStatusRequest adalah body PATCH /admin/packages/{id}/status.

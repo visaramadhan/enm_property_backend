@@ -48,3 +48,11 @@ type SettingUpdate struct {
 type UpdateSettingsRequest struct {
 	Settings []SettingUpdate `json:"settings" validate:"required,min=1,dive"`
 }
+
+// PublicSettingsView adalah pengaturan tampilan yang dibaca halaman publik
+// (mis. area masuk) tanpa autentikasi. Hanya berisi nilai yang tidak rahasia.
+type PublicSettingsView struct {
+	SiteName      string `json:"site_name"`
+	LogoURL       string `json:"logo_url"`
+	LoginImageURL string `json:"login_image_url"`
+}

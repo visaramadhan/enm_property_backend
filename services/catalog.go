@@ -1,7 +1,10 @@
 package services
 
 import (
+	"math"
+	"sort"
 	"strings"
+	"time"
 
 	"enmproperty/backend/database"
 	"enmproperty/backend/dto"
@@ -18,6 +21,10 @@ type CatalogService struct {
 }
 
 // Search mengembalikan properti tayang sesuai filter katalog publik.
+//
+// Seluruh hasil yang cocok diambil tanpa paginasi lebih dulu agar algoritma
+// pengurutan (boost -> keyword -> klik WhatsApp -> rating -> favorit) dapat
+// diterapkan sebelum halaman dipotong.
 func (s *CatalogService) Search(q dto.PropertyFilterQuery) (dto.ListResult[dto.PropertySummary], error) {
 	query := q.ToListQuery()
 	if query.Filters == nil {
@@ -25,11 +32,201 @@ func (s *CatalogService) Search(q dto.PropertyFilterQuery) (dto.ListResult[dto.P
 	}
 	query.Filters["public"] = "true"
 
-	properties, total, err := s.deps.Repos.Properties.List(query)
+	page, perPage := query.Page, query.PerPage
+	query.Page, query.PerPage = 0, 0
+
+	properties, _, err := s.deps.Repos.Properties.List(query)
 	if err != nil {
 		return dto.ListResult[dto.PropertySummary]{}, httpx.Internal(err)
 	}
-	return dto.NewListResult(dto.NewPropertySummaries(properties), total), nil
+
+	s.rank(properties, q.Search)
+
+	total := len(properties)
+	pageItems := paginateProperties(properties, page, perPage)
+
+	summaries := dto.NewPropertySummaries(pageItems)
+	s.attachCategoryNames(summaries)
+	return dto.NewListResult(summaries, total), nil
+}
+
+// rankedProperty menyimpan komponen skor pengurutan sebuah properti.
+type rankedProperty struct {
+	property *models.Property
+	boost    int
+	keyword  int
+	wa       int
+	rating   float64
+	favorite int
+}
+
+// rank mengurutkan properti sesuai prioritas: boost, keyword, klik WhatsApp,
+// rating, lalu favorit. Tie-break: terbit terbaru, lalu ID agar stabil.
+func (s *CatalogService) rank(properties []*models.Property, keyword string) {
+	subCache := map[string]*models.Subscription{}
+	planCache := map[string]*models.Plan{}
+	now := timeNow()
+
+	levelFor := func(partnerID string) (int, bool) {
+		sub, ok := subCache[partnerID]
+		if !ok {
+			found, err := s.deps.Repos.Subscriptions.GetActiveByPartner(partnerID)
+			if err != nil {
+				sub = nil
+			} else {
+				sub = found
+			}
+			subCache[partnerID] = sub
+		}
+		if sub == nil || !sub.IsActiveAt(now) {
+			return 0, false
+		}
+		plan, ok := planCache[sub.PlanID]
+		if !ok {
+			found, err := s.deps.Repos.Plans.GetByID(sub.PlanID)
+			if err != nil {
+				plan = nil
+			} else {
+				plan = found
+			}
+			planCache[sub.PlanID] = plan
+		}
+		if plan == nil || !plan.BoostEnabled {
+			return 0, false
+		}
+		return plan.Level, true
+	}
+
+	ranked := make([]rankedProperty, 0, len(properties))
+	for _, property := range properties {
+		item := rankedProperty{
+			property: property,
+			keyword:  keywordScore(property, keyword),
+			wa:       property.ContactCount,
+			rating:   ratingScore(property),
+			favorite: s.favoriteCount(property),
+		}
+		// Boost hanya berlaku bila paket mitra mengaktifkan boost, listing
+		// ditandai boost aktif, dan masa boost belum berakhir.
+		if level, ok := levelFor(property.PartnerID); ok && property.BoostActive {
+			if property.BoostUntil == nil || property.BoostUntil.After(now) {
+				item.boost = level
+			}
+		}
+		ranked = append(ranked, item)
+	}
+
+	sort.SliceStable(ranked, func(i, j int) bool {
+		a, b := ranked[i], ranked[j]
+		if a.boost != b.boost {
+			return a.boost > b.boost
+		}
+		if a.keyword != b.keyword {
+			return a.keyword > b.keyword
+		}
+		if a.wa != b.wa {
+			return a.wa > b.wa
+		}
+		if a.rating != b.rating {
+			return a.rating > b.rating
+		}
+		if a.favorite != b.favorite {
+			return a.favorite > b.favorite
+		}
+		return publishedAt(ranked[i].property).After(publishedAt(ranked[j].property))
+	})
+
+	for i := range ranked {
+		properties[i] = ranked[i].property
+	}
+}
+
+// keywordScore menilai kecocokan kata kunci pada judul, kota, alamat, dan deskripsi.
+func keywordScore(property *models.Property, keyword string) int {
+	k := strings.ToLower(strings.TrimSpace(keyword))
+	if k == "" {
+		return 0
+	}
+	score := 0
+	if strings.Contains(strings.ToLower(property.Title), k) {
+		score += 4
+	}
+	if strings.Contains(strings.ToLower(property.City), k) {
+		score += 2
+	}
+	if strings.Contains(strings.ToLower(property.Address), k) {
+		score += 1
+	}
+	if strings.Contains(strings.ToLower(property.Description), k) {
+		score += 1
+	}
+	return score
+}
+
+// ratingScore menggabungkan rata-rata rating dengan jumlah ulasan agar properti
+// dengan banyak ulasan positif lebih diutamakan.
+func ratingScore(property *models.Property) float64 {
+	if property.RatingCount <= 0 {
+		return 0
+	}
+	return property.RatingAvg * math.Log(float64(property.RatingCount)+1)
+}
+
+// favoriteCount memakai jumlah favorit dari repository (sumber kebenaran),
+// dengan fallback ke nilai denormalisasi pada properti.
+func (s *CatalogService) favoriteCount(property *models.Property) int {
+	count := s.deps.Repos.Favorites.CountByProperty(property.ID)
+	if count > property.FavoriteCount {
+		return count
+	}
+	return property.FavoriteCount
+}
+
+// attachCategoryNames melengkapi ringkasan properti dengan nama kategori.
+func (s *CatalogService) attachCategoryNames(summaries []dto.PropertySummary) {
+	if len(summaries) == 0 {
+		return
+	}
+	categories, _, err := s.deps.Repos.Categories.List(database.ListQuery{PerPage: 0})
+	if err != nil {
+		return
+	}
+	names := make(map[string]string, len(categories))
+	for _, category := range categories {
+		names[category.ID] = category.Name
+	}
+	for i := range summaries {
+		if name, ok := names[summaries[i].CategoryID]; ok {
+			summaries[i].CategoryName = name
+		}
+	}
+}
+
+// paginateProperties memotong hasil sesuai halaman; perPage <= 0 berarti tanpa batas.
+func paginateProperties(items []*models.Property, page, perPage int) []*models.Property {
+	if perPage <= 0 {
+		return items
+	}
+	offset := 0
+	if page > 1 {
+		offset = (page - 1) * perPage
+	}
+	if offset >= len(items) {
+		return []*models.Property{}
+	}
+	end := offset + perPage
+	if end > len(items) {
+		end = len(items)
+	}
+	return items[offset:end]
+}
+
+// publishedAt mengembalikan waktu terbit, atau waktu pembuatan bila belum terbit.
+func publishedAt(property *models.Property) time.Time {
+	if property.PublishedAt != nil {
+		return *property.PublishedAt
+	}
+	return property.CreatedAt
 }
 
 // GetDetail mengembalikan detail properti tayang dan mencatat tayangannya untuk

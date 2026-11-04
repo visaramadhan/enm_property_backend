@@ -94,23 +94,23 @@ type OrderStatusView struct {
 // SubscriptionView adalah representasi masa aktif paket mitra, termasuk flag
 // alert yang dipakai PackageAlertBanner di seluruh halaman mitra.
 type SubscriptionView struct {
-	ID                 string     `json:"id"`
-	PartnerID          string     `json:"partner_id"`
-	PlanID             string     `json:"plan_id"`
-	PlanName           string     `json:"plan_name"`
-	Status             string     `json:"status"`
-	StatusLabel        string     `json:"status_label"`
-	StartsAt           time.Time  `json:"starts_at"`
-	EndsAt             time.Time  `json:"ends_at"`
-	DaysRemaining      int        `json:"days_remaining"`
-	IsActive           bool       `json:"is_active"`
-	ShowAlert          bool       `json:"show_alert"`
-	AlertThresholdDays int        `json:"alert_threshold_days"`
-	ListingsUsed       int        `json:"listings_used"`
-	ListingQuota       int        `json:"listing_quota"`
-	ListingRemaining   int        `json:"listing_remaining"`
-	UpdatedAt          time.Time  `json:"updated_at"`
-	LastOrderCode      string     `json:"last_order_code,omitempty"`
+	ID                 string    `json:"id"`
+	PartnerID          string    `json:"partner_id"`
+	PlanID             string    `json:"plan_id"`
+	PlanName           string    `json:"plan_name"`
+	Status             string    `json:"status"`
+	StatusLabel        string    `json:"status_label"`
+	StartsAt           time.Time `json:"starts_at"`
+	EndsAt             time.Time `json:"ends_at"`
+	DaysRemaining      int       `json:"days_remaining"`
+	IsActive           bool      `json:"is_active"`
+	ShowAlert          bool      `json:"show_alert"`
+	AlertThresholdDays int       `json:"alert_threshold_days"`
+	ListingsUsed       int       `json:"listings_used"`
+	ListingQuota       int       `json:"listing_quota"`
+	ListingRemaining   int       `json:"listing_remaining"`
+	UpdatedAt          time.Time `json:"updated_at"`
+	LastOrderCode      string    `json:"last_order_code,omitempty"`
 }
 
 // NewSubscriptionView membentuk tampilan langganan dari entitas domain.

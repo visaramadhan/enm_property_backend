@@ -189,6 +189,12 @@ func (r *memoryPropertyRepository) List(q ListQuery) ([]*models.Property, int, e
 		if propertyType := q.Filter("property_type"); propertyType != "" && string(property.PropertyType) != propertyType {
 			continue
 		}
+		if categoryID := q.Filter("category_id"); categoryID != "" && property.CategoryID != categoryID {
+			continue
+		}
+		if q.Filter("boost_active") == "true" && !property.BoostActive {
+			continue
+		}
 		if min := q.Filter("price_min"); min != "" {
 			if value, err := strconv.ParseInt(min, 10, 64); err == nil && property.Price < value {
 				continue

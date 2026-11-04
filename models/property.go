@@ -12,6 +12,8 @@ type Property struct {
 	Description    string          `json:"description"`
 	ListingType    ListingType     `json:"listing_type"`
 	PropertyType   PropertyType    `json:"property_type"`
+	// CategoryID menautkan properti ke kategori master data (opsional).
+	CategoryID string `json:"category_id"`
 	Address        string          `json:"address"`
 	City           string          `json:"city"`
 	Province       string          `json:"province"`
@@ -30,6 +32,14 @@ type Property struct {
 	Status         PropertyStatus  `json:"status"`
 	Views          int             `json:"views"`
 	ContactCount   int             `json:"contact_count"`
+	// BoostActive menandakan listing sedang di-boost oleh mitra berpaket.
+	BoostActive bool `json:"boost_active"`
+	// BoostUntil adalah batas waktu boost; boost hanya berlaku sampai waktu ini.
+	BoostUntil *time.Time `json:"boost_until,omitempty"`
+	// Statistik reputasi yang dipakai algoritma pengurutan katalog.
+	RatingCount   int     `json:"rating_count"`
+	RatingAvg     float64 `json:"rating_avg"`
+	FavoriteCount int     `json:"favorite_count"`
 	Photos         []PropertyPhoto `json:"photos,omitempty"`
 	PublishedAt    *time.Time      `json:"published_at,omitempty"`
 	DeletedAt      *time.Time      `json:"deleted_at,omitempty"`

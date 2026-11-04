@@ -1,10 +1,14 @@
 package services
 
 import (
+	"bytes"
 	"enmproperty/backend/database"
 	"enmproperty/backend/dto"
 	"enmproperty/backend/models"
 	"enmproperty/backend/platform/httpx"
+
+	"github.com/go-pdf/fpdf"
+	"github.com/xuri/excelize/v2"
 )
 
 // AuditService mencatat dan membaca audit log aksi pengelola platform (BE-15).
@@ -69,6 +73,84 @@ func (s *AuditService) Export(q dto.AuditFilterQuery) ([]dto.AuditView, error) {
 		return nil, httpx.Internal(err)
 	}
 	return dto.NewAuditViews(entries), nil
+}
+
+// ExportXLSX membentuk berkas Excel dari audit log sesuai filter.
+func (s *AuditService) ExportXLSX(q dto.AuditFilterQuery) ([]byte, string, error) {
+	views, err := s.Export(q)
+	if err != nil {
+		return nil, "", err
+	}
+
+	file := excelize.NewFile()
+	defer file.Close()
+	const sheet = "Audit"
+	index, err := file.NewSheet(sheet)
+	if err != nil {
+		return nil, "", httpx.Internal(err)
+	}
+	file.SetActiveSheet(index)
+	_ = file.DeleteSheet("Sheet1")
+
+	headers := []string{"Waktu", "Aktor", "Email", "Peran", "Aksi", "Entitas", "ID Entitas", "Catatan", "IP"}
+	for i, header := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		_ = file.SetCellValue(sheet, cell, header)
+	}
+	for r, view := range views {
+		values := []any{
+			view.CreatedAt.Format("2006-01-02 15:04"), view.ActorName, view.ActorEmail,
+			view.ActorRole, view.Action, view.Entity, view.EntityID, view.Note, view.IPAddress,
+		}
+		for c, value := range values {
+			cell, _ := excelize.CoordinatesToCellName(c+1, r+2)
+			_ = file.SetCellValue(sheet, cell, value)
+		}
+	}
+
+	buffer, err := file.WriteToBuffer()
+	if err != nil {
+		return nil, "", httpx.Internal(err)
+	}
+	return buffer.Bytes(), "audit-log.xlsx", nil
+}
+
+// ExportPDF membentuk berkas PDF dari audit log sesuai filter.
+func (s *AuditService) ExportPDF(q dto.AuditFilterQuery) ([]byte, string, error) {
+	views, err := s.Export(q)
+	if err != nil {
+		return nil, "", err
+	}
+
+	pdf := fpdf.New("L", "mm", "A4", "")
+	pdf.AddPage()
+	pdf.SetFont("Arial", "B", 14)
+	pdf.CellFormat(0, 10, "Audit Log ENM Property", "", 1, "C", false, 0, "")
+	pdf.SetFont("Arial", "", 10)
+
+	widths := []float64{35, 45, 30, 30, 40, 50, 35}
+	headers := []string{"Waktu", "Aktor", "Peran", "Aksi", "Entitas", "ID Entitas", "IP"}
+	for i, header := range headers {
+		pdf.CellFormat(widths[i], 8, header, "1", 0, "C", true, 0, "")
+	}
+	pdf.Ln(-1)
+
+	for _, view := range views {
+		values := []string{
+			view.CreatedAt.Format("2006-01-02 15:04"), view.ActorName, view.ActorRole,
+			view.Action, view.Entity, view.EntityID, view.IPAddress,
+		}
+		for i, value := range values {
+			pdf.CellFormat(widths[i], 7, value, "1", 0, "L", false, 0, "")
+		}
+		pdf.Ln(-1)
+	}
+
+	buffer := new(bytes.Buffer)
+	if err := pdf.Output(buffer); err != nil {
+		return nil, "", httpx.Internal(err)
+	}
+	return buffer.Bytes(), "audit-log.pdf", nil
 }
 
 // auditListQuery memetakan filter permintaan menjadi ListQuery repository.

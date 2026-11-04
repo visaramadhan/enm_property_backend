@@ -52,6 +52,10 @@ type Partner struct {
 func (p *Partner) IsActive() bool { return p.Status == PartnerStatusActive }
 
 // Plan adalah paket langganan yang dijual pada halaman pricing.
+//
+// Selain harga dan kuota, paket mengatur hak akses mitra: level (dipakai untuk
+// bobot boost di katalog), serta akses ke pengaturan keyword, katalog, dan
+// nomor WhatsApp. Paket gratis tidak memperoleh ketiga akses tersebut.
 type Plan struct {
 	ID           string    `json:"id"`
 	Slug         string    `json:"slug"`
@@ -64,9 +68,37 @@ type Plan struct {
 	IsFree       bool      `json:"is_free"`
 	IsActive     bool      `json:"is_active"`
 	SortOrder    int       `json:"sort_order"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	// Level menentukan prioritas tampil di katalog (1 terendah, makin tinggi makin atas).
+	Level int `json:"level"`
+	// BoostEnabled menandakan paket boleh memakai fitur boost listing.
+	BoostEnabled bool `json:"boost_enabled"`
+	// Akses pengaturan lanjutan sisi mitra.
+	KeywordAccess  bool `json:"keyword_access"`
+	CatalogAccess  bool `json:"catalog_access"`
+	WhatsAppAccess bool `json:"whatsapp_access"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // IsUnlimited memeriksa paket dengan kuota listing tanpa batas.
 func (p *Plan) IsUnlimited() bool { return p.ListingQuota < 0 }
+
+// ApplyAccessRules menegakkan aturan akses sesuai sifat paket.
+//
+// Paket gratis (IsFree=true atau harga 0) tidak boleh memiliki akses pengaturan
+// keyword, katalog, maupun nomor WhatsApp, dan tidak memperoleh boost. Level
+// minimal 1 agar bobot pengurutan tetap terdefinisi.
+func (p *Plan) ApplyAccessRules() {
+	if p.Price == 0 {
+		p.IsFree = true
+	}
+	if p.IsFree {
+		p.KeywordAccess = false
+		p.CatalogAccess = false
+		p.WhatsAppAccess = false
+		p.BoostEnabled = false
+	}
+	if p.Level < 1 {
+		p.Level = 1
+	}
+}

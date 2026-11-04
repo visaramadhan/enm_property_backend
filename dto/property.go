@@ -71,6 +71,8 @@ type PropertySummary struct {
 	PropertyTypeLabel string     `json:"property_type_label"`
 	City              string     `json:"city"`
 	Province          string     `json:"province"`
+	CategoryID        string     `json:"category_id,omitempty"`
+	CategoryName      string     `json:"category_name,omitempty"`
 	Price             int64      `json:"price"`
 	PriceLabel        string     `json:"price_label"`
 	PricePeriod       string     `json:"price_period,omitempty"`
@@ -83,6 +85,11 @@ type PropertySummary struct {
 	Status            string     `json:"status"`
 	StatusLabel       string     `json:"status_label"`
 	Views             int        `json:"views"`
+	ContactCount      int        `json:"contact_count"`
+	BoostActive       bool       `json:"boost_active"`
+	RatingCount       int        `json:"rating_count"`
+	RatingAvg         float64    `json:"rating_avg"`
+	FavoriteCount     int        `json:"favorite_count"`
 	IsFavorite        bool       `json:"is_favorite"`
 	PublishedAt       *time.Time `json:"published_at,omitempty"`
 	CreatedAt         time.Time  `json:"created_at"`
@@ -103,6 +110,7 @@ func NewPropertySummary(property *models.Property) PropertySummary {
 		PropertyTypeLabel: propertyTypeLabel(property.PropertyType),
 		City:              property.City,
 		Province:          property.Province,
+		CategoryID:        property.CategoryID,
 		Price:             property.Price,
 		PriceLabel:        priceLabel(property.Price, property.PricePeriod),
 		PricePeriod:       string(property.PricePeriod),
@@ -115,6 +123,11 @@ func NewPropertySummary(property *models.Property) PropertySummary {
 		Status:            string(property.Status),
 		StatusLabel:       property.Status.Label(),
 		Views:             property.Views,
+		ContactCount:      property.ContactCount,
+		BoostActive:       property.BoostActive,
+		RatingCount:       property.RatingCount,
+		RatingAvg:         property.RatingAvg,
+		FavoriteCount:     property.FavoriteCount,
 		PublishedAt:       property.PublishedAt,
 		CreatedAt:         property.CreatedAt,
 	}
@@ -130,7 +143,6 @@ type PropertyDetail struct {
 	Longitude    float64         `json:"longitude"`
 	Facilities   []string        `json:"facilities"`
 	UnitsTotal   int             `json:"units_total"`
-	ContactCount int             `json:"contact_count"`
 	PartnerID    string          `json:"partner_id"`
 	PartnerName  string          `json:"partner_name"`
 	Partner      *PartnerSummary `json:"partner,omitempty"`
@@ -157,7 +169,6 @@ func NewPropertyDetail(property *models.Property) PropertyDetail {
 		Longitude:       property.Longitude,
 		Facilities:      facilities,
 		UnitsTotal:      property.UnitsTotal,
-		ContactCount:    property.ContactCount,
 		PartnerID:       property.PartnerID,
 		PartnerName:     property.PartnerName,
 		Photos:          NewPhotoViews(property.Photos),
@@ -185,6 +196,7 @@ type PropertyFilterQuery struct {
 	ListingType  string `form:"listing_type" validate:"omitempty,oneof=dijual disewa"`
 	PropertyType string `form:"property_type" validate:"omitempty,oneof=rumah apartemen ruko tanah villa kantor gudang lainnya"`
 	Status       string `form:"status"`
+	CategoryID   string `form:"category_id"`
 	PriceMin     int64  `form:"price_min" validate:"omitempty,gte=0"`
 	PriceMax     int64  `form:"price_max" validate:"omitempty,gte=0"`
 	SortBy       string `form:"sort_by" validate:"omitempty,oneof=price views title created_at"`
@@ -209,6 +221,9 @@ func (q PropertyFilterQuery) ToListQuery() database.ListQuery {
 	if q.Status != "" {
 		filters["status"] = q.Status
 	}
+	if q.CategoryID != "" {
+		filters["category_id"] = q.CategoryID
+	}
 	if q.PriceMin > 0 {
 		filters["price_min"] = strconv.FormatInt(q.PriceMin, 10)
 	}
@@ -231,6 +246,7 @@ type CreatePropertyRequest struct {
 	Description  string   `json:"description" validate:"required,min=20,max=5000"`
 	ListingType  string   `json:"listing_type" validate:"required,oneof=dijual disewa"`
 	PropertyType string   `json:"property_type" validate:"required,oneof=rumah apartemen ruko tanah villa kantor gudang lainnya"`
+	CategoryID   string   `json:"category_id" validate:"omitempty,max=64"`
 	Address      string   `json:"address" validate:"required,max=255"`
 	City         string   `json:"city" validate:"required,max=100"`
 	Province     string   `json:"province" validate:"required,max=100"`
@@ -279,6 +295,7 @@ type AdminUpdatePropertyRequest struct {
 	Description    *string  `json:"description" validate:"omitempty,min=20,max=5000"`
 	ListingType    *string  `json:"listing_type" validate:"omitempty,oneof=dijual disewa"`
 	PropertyType   *string  `json:"property_type" validate:"omitempty,oneof=rumah apartemen ruko tanah villa kantor gudang lainnya"`
+	CategoryID     *string  `json:"category_id" validate:"omitempty,max=64"`
 	Address        *string  `json:"address" validate:"omitempty,max=255"`
 	City           *string  `json:"city" validate:"omitempty,max=100"`
 	Province       *string  `json:"province" validate:"omitempty,max=100"`

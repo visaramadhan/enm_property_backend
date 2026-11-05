@@ -174,6 +174,131 @@ func (s *PaymentService) GetStatus(user *models.User, orderCode string) (dto.Ord
 	return s.statusView(order), nil
 }
 
+// Charge membuat transaksi QRIS/VA melalui Midtrans Core API lalu menyimpan
+// instruksi pembayaran pada order agar dapat dirender di halaman pembayaran.
+func (s *PaymentService) Charge(ctx context.Context, user *models.User, orderCode, method string) (dto.PaymentView, error) {
+	order, err := s.orderByCode(orderCode)
+	if err != nil {
+		return dto.PaymentView{}, err
+	}
+	if !canViewOrder(user, order) {
+		return dto.PaymentView{}, httpx.Forbidden("Anda tidak berhak membayar order ini")
+	}
+	if order.IsPaid() {
+		return s.paymentView(order), nil
+	}
+	if order.Status != models.OrderStatusPending {
+		return dto.PaymentView{}, httpx.Unprocessable("Order tidak dapat dibayar pada status ini")
+	}
+	if order.ExpiresAt.Before(timeNow()) {
+		return dto.PaymentView{}, httpx.Unprocessable("Batas waktu pembayaran telah lewat")
+	}
+
+	method = normalizePaymentMethod(method)
+	request := midtrans.Request{
+		OrderID:       order.Code,
+		Amount:        order.Amount,
+		CustomerName:  user.DisplayName(),
+		CustomerEmail: user.Email,
+		ExpiryMinutes: s.orderExpiryMinutes(),
+	}
+	if order.PartnerID != "" {
+		if partner, err := s.deps.Repos.Partners.GetByID(order.PartnerID); err == nil && partner != nil {
+			request.CustomerPhone = partner.Phone
+		}
+	}
+
+	var result *midtrans.ChargeResult
+	if method == "qris" {
+		result, err = s.deps.Midtrans.ChargeQRIS(ctx, request)
+	} else {
+		result, err = s.deps.Midtrans.ChargeVA(ctx, method, request)
+	}
+	if err != nil {
+		return dto.PaymentView{}, httpx.Internal(err)
+	}
+
+	s.applyChargeResult(order, method, result)
+	if err := s.deps.Repos.Orders.Update(order); err != nil {
+		return dto.PaymentView{}, httpx.Internal(err)
+	}
+	return s.paymentView(order), nil
+}
+
+// GetPayment mengembalikan instruksi pembayaran yang sudah dibuat untuk order.
+func (s *PaymentService) GetPayment(user *models.User, orderCode string) (dto.PaymentView, error) {
+	order, err := s.orderByCode(orderCode)
+	if err != nil {
+		return dto.PaymentView{}, err
+	}
+	if !canViewOrder(user, order) {
+		return dto.PaymentView{}, httpx.Forbidden("Anda tidak berhak melihat pembayaran ini")
+	}
+	return s.paymentView(order), nil
+}
+
+// ListOrders mengembalikan riwayat transaksi milik pengguna (mitra) berpaginasi.
+func (s *PaymentService) ListOrders(user *models.User, q dto.PaginationQuery, extra map[string]string) (dto.ListResult[dto.OrderView], error) {
+	if user == nil {
+		return dto.ListResult[dto.OrderView]{}, httpx.Unauthorized("Sesi pengguna tidak ditemukan")
+	}
+	filters := map[string]string{"user_id": user.ID}
+	for key, value := range extra {
+		if strings.TrimSpace(value) != "" {
+			filters[key] = value
+		}
+	}
+
+	orders, total, err := s.deps.Repos.Orders.List(q.ToListQuery(filters))
+	if err != nil {
+		return dto.ListResult[dto.OrderView]{}, httpx.Internal(err)
+	}
+	items := make([]dto.OrderView, 0, len(orders))
+	for _, order := range orders {
+		items = append(items, dto.NewOrderView(order))
+	}
+	return dto.NewListResult(items, total), nil
+}
+
+// paymentView melengkapi instruksi pembayaran dengan flag retry berbasis waktu.
+func (s *PaymentService) paymentView(order *models.Order) dto.PaymentView {
+	view := dto.NewPaymentView(order)
+	view.CanRetry = order.Status == models.OrderStatusPending && !order.ExpiresAt.Before(timeNow())
+	return view
+}
+
+// applyChargeResult menyimpan hasil charge Core API pada entitas order.
+func (s *PaymentService) applyChargeResult(order *models.Order, method string, result *midtrans.ChargeResult) {
+	if method == "qris" {
+		order.PaymentMethod = "qris"
+		order.PaymentChannel = "qris"
+		order.PaymentQRURL = result.QRURL
+		order.PaymentQRString = result.QRString
+	} else {
+		order.PaymentMethod = "va"
+		order.PaymentChannel = method
+		order.PaymentNumber = result.VANumber
+	}
+	if result.TransactionID != "" {
+		order.MidtransTransactionID = result.TransactionID
+	}
+	if result.PaymentType != "" {
+		order.MidtransPaymentType = result.PaymentType
+	}
+
+	expires := order.ExpiresAt
+	if parsed, err := time.Parse("2006-01-02 15:04:05", result.ExpiryTime); err == nil {
+		expires = parsed
+	}
+	order.PaymentExpiresAt = &expires
+	order.UpdatedAt = timeNow()
+}
+
+// normalizePaymentMethod menormalkan nama metode pembayaran dari klien.
+func normalizePaymentMethod(method string) string {
+	return strings.ToLower(strings.TrimSpace(method))
+}
+
 // SyncStatusFromMidtrans menarik status terkini dari Midtrans lalu menyimpannya.
 func (s *PaymentService) SyncStatusFromMidtrans(ctx context.Context, orderCode string) (dto.OrderStatusView, error) {
 	order, err := s.orderByCode(orderCode)

@@ -140,6 +140,7 @@ func copyOrder(in *models.Order) *models.Order {
 	}
 	out := *in
 	out.PaidAt = copyTime(in.PaidAt)
+	out.PaymentExpiresAt = copyTime(in.PaymentExpiresAt)
 	return &out
 }
 

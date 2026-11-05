@@ -140,6 +140,11 @@ func New(deps Deps) *gin.Engine {
 		checkoutHandler.Checkout,
 	)
 	authed.GET("/subscriptions/orders/:orderCode/status", checkoutHandler.Status)
+	authed.POST("/subscriptions/orders/:orderCode/charge",
+		middleware.RateLimit(cfg.RateLimit, cfg.RateLimit.CheckoutRequests),
+		checkoutHandler.Charge,
+	)
+	authed.GET("/subscriptions/orders/:orderCode/payment", checkoutHandler.Payment)
 	authed.GET("/invoices/:orderCode", invoiceHandler.Get)
 	authed.GET("/invoices/:orderCode/pdf", invoiceHandler.PDF)
 
@@ -154,6 +159,9 @@ func New(deps Deps) *gin.Engine {
 	mitraProfile.GET("/profile", partnerHandler.Profile)
 	mitraProfile.PUT("/profile", partnerHandler.UpdateProfile)
 	mitraProfile.GET("/agreement", partnerHandler.Agreement)
+	// Riwayat transaksi langganan mitra; tidak mensyaratkan paket aktif agar
+	// mitra yang baru checkout tetap dapat melihat status pembayarannya.
+	mitraProfile.GET("/orders", checkoutHandler.Orders)
 
 	// --- Mitra: dashboard dan properti -------------------------------------
 	vendor := api.Group("/vendor", authRequired, middleware.RequireRole(models.RoleMitra), activePartner)

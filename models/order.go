@@ -23,10 +23,17 @@ type Order struct {
 	SnapRedirectURL       string          `json:"snap_redirect_url,omitempty"`
 	MidtransTransactionID string          `json:"midtrans_transaction_id,omitempty"`
 	MidtransPaymentType   string          `json:"midtrans_payment_type,omitempty"`
-	PaidAt                *time.Time      `json:"paid_at,omitempty"`
-	ExpiresAt             time.Time       `json:"expires_at"`
-	CreatedAt             time.Time       `json:"created_at"`
-	UpdatedAt             time.Time       `json:"updated_at"`
+	// Hasil charge Core API (QRIS/VA) yang dirender pada halaman pembayaran.
+	PaymentMethod    string     `json:"payment_method,omitempty"`
+	PaymentChannel   string     `json:"payment_channel,omitempty"`
+	PaymentNumber    string     `json:"payment_number,omitempty"`
+	PaymentQRURL     string     `json:"payment_qr_url,omitempty"`
+	PaymentQRString  string     `json:"payment_qr_string,omitempty"`
+	PaymentExpiresAt *time.Time `json:"payment_expires_at,omitempty"`
+	PaidAt           *time.Time `json:"paid_at,omitempty"`
+	ExpiresAt        time.Time  `json:"expires_at"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
 // IsPaid memeriksa apakah order sudah dibayar.

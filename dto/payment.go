@@ -91,6 +91,50 @@ type OrderStatusView struct {
 	Subscription *SubscriptionView `json:"subscription,omitempty"`
 }
 
+// ChargeRequest adalah body POST /subscriptions/orders/{orderCode}/charge.
+//
+// Method bernilai "qris" atau nama bank virtual account (bca/bni/bri/permata).
+type ChargeRequest struct {
+	Method string `json:"method" validate:"required,oneof=qris bca bni bri permata"`
+}
+
+// PaymentView adalah respons instruksi pembayaran QRIS/VA untuk satu order.
+//
+// Halaman pembayaran memakai QRString/QRURL untuk QRIS dan Number untuk VA.
+type PaymentView struct {
+	Order        OrderView  `json:"order"`
+	Method       string     `json:"method"`
+	MethodLabel  string     `json:"method_label"`
+	Channel      string     `json:"channel"`
+	ChannelLabel string     `json:"channel_label"`
+	Number       string     `json:"number,omitempty"`
+	QRURL        string     `json:"qr_url,omitempty"`
+	QRString     string     `json:"qr_string,omitempty"`
+	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
+	IsPaid       bool       `json:"is_paid"`
+	CanRetry     bool       `json:"can_retry"`
+}
+
+// NewPaymentView membentuk instruksi pembayaran dari entitas order.
+// Flag CanRetry dihitung di lapisan service karena bergantung pada waktu.
+func NewPaymentView(order *models.Order) PaymentView {
+	if order == nil {
+		return PaymentView{}
+	}
+	return PaymentView{
+		Order:        NewOrderView(order),
+		Method:       order.PaymentMethod,
+		MethodLabel:  paymentMethodLabel(order.PaymentMethod),
+		Channel:      order.PaymentChannel,
+		ChannelLabel: paymentChannelLabel(order.PaymentChannel),
+		Number:       order.PaymentNumber,
+		QRURL:        order.PaymentQRURL,
+		QRString:     order.PaymentQRString,
+		ExpiresAt:    order.PaymentExpiresAt,
+		IsPaid:       order.IsPaid(),
+	}
+}
+
 // SubscriptionView adalah representasi masa aktif paket mitra, termasuk flag
 // alert yang dipakai PackageAlertBanner di seluruh halaman mitra.
 type SubscriptionView struct {
@@ -209,5 +253,35 @@ func subscriptionStatusLabel(status models.SubscriptionStatus) string {
 		return "Dibatalkan"
 	default:
 		return string(status)
+	}
+}
+
+// paymentMethodLabel mengembalikan label metode pembayaran.
+func paymentMethodLabel(method string) string {
+	switch method {
+	case "qris":
+		return "QRIS"
+	case "va":
+		return "Virtual Account"
+	default:
+		return method
+	}
+}
+
+// paymentChannelLabel mengembalikan label kanal pembayaran QRIS/VA.
+func paymentChannelLabel(channel string) string {
+	switch channel {
+	case "qris":
+		return "QRIS"
+	case "bca":
+		return "BCA Virtual Account"
+	case "bni":
+		return "BNI Virtual Account"
+	case "bri":
+		return "BRI Virtual Account"
+	case "permata":
+		return "Permata Virtual Account"
+	default:
+		return channel
 	}
 }

@@ -13,7 +13,8 @@ import (
 const orderColumns = `id, code, user_id, partner_id, partner_name, plan_id, plan_name, ` +
 	`plan_price, plan_duration_days, plan_listing_quota, amount, kind, status, provider, ` +
 	`snap_token, snap_redirect_url, midtrans_transaction_id, midtrans_payment_type, ` +
-	`paid_at, expires_at, created_at, updated_at`
+	`payment_method, payment_channel, payment_number, payment_qr_url, payment_qr_string, ` +
+	`payment_expires_at, paid_at, expires_at, created_at, updated_at`
 
 type postgresOrderRepository struct{ pool pgxPool }
 
@@ -25,8 +26,9 @@ func scanOrder(row pgx.Row) (*models.Order, error) {
 		&order.PlanID, &order.PlanName, &order.PlanPrice, &order.PlanDurationDays,
 		&order.PlanListingQuota, &order.Amount, &order.Kind, &order.Status, &order.Provider,
 		&order.SnapToken, &order.SnapRedirectURL, &order.MidtransTransactionID,
-		&order.MidtransPaymentType, &order.PaidAt, &order.ExpiresAt,
-		&order.CreatedAt, &order.UpdatedAt,
+		&order.MidtransPaymentType, &order.PaymentMethod, &order.PaymentChannel,
+		&order.PaymentNumber, &order.PaymentQRURL, &order.PaymentQRString, &order.PaymentExpiresAt,
+		&order.PaidAt, &order.ExpiresAt, &order.CreatedAt, &order.UpdatedAt,
 	); err != nil {
 		return nil, err
 	}
@@ -51,14 +53,16 @@ func (r *postgresOrderRepository) Create(order *models.Order) error {
 	}
 
 	const query = `INSERT INTO orders (` + orderColumns + `)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)`
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)`
 	_, err := r.pool.Exec(ctx, query,
 		order.ID, order.Code, order.UserID, order.PartnerID, order.PartnerName,
 		order.PlanID, order.PlanName, order.PlanPrice, order.PlanDurationDays,
 		order.PlanListingQuota, order.Amount, string(order.Kind), string(order.Status),
 		string(order.Provider), order.SnapToken, order.SnapRedirectURL,
-		order.MidtransTransactionID, order.MidtransPaymentType, order.PaidAt,
-		order.ExpiresAt, order.CreatedAt, order.UpdatedAt,
+		order.MidtransTransactionID, order.MidtransPaymentType,
+		order.PaymentMethod, order.PaymentChannel, order.PaymentNumber,
+		order.PaymentQRURL, order.PaymentQRString, order.PaymentExpiresAt,
+		order.PaidAt, order.ExpiresAt, order.CreatedAt, order.UpdatedAt,
 	)
 	if isUniqueViolation(err) {
 		return errDuplicateCode
@@ -73,15 +77,19 @@ func (r *postgresOrderRepository) Update(order *models.Order) error {
 		plan_name = $7, plan_price = $8, plan_duration_days = $9, plan_listing_quota = $10,
 		amount = $11, kind = $12, status = $13, provider = $14, snap_token = $15,
 		snap_redirect_url = $16, midtrans_transaction_id = $17, midtrans_payment_type = $18,
-		paid_at = $19, expires_at = $20, created_at = $21, updated_at = $22
+		payment_method = $19, payment_channel = $20, payment_number = $21, payment_qr_url = $22,
+		payment_qr_string = $23, payment_expires_at = $24,
+		paid_at = $25, expires_at = $26, created_at = $27, updated_at = $28
 		WHERE id = $1`
 	tag, err := r.pool.Exec(ctx, query,
 		order.ID, order.Code, order.UserID, order.PartnerID, order.PartnerName,
 		order.PlanID, order.PlanName, order.PlanPrice, order.PlanDurationDays,
 		order.PlanListingQuota, order.Amount, string(order.Kind), string(order.Status),
 		string(order.Provider), order.SnapToken, order.SnapRedirectURL,
-		order.MidtransTransactionID, order.MidtransPaymentType, order.PaidAt,
-		order.ExpiresAt, order.CreatedAt, order.UpdatedAt,
+		order.MidtransTransactionID, order.MidtransPaymentType,
+		order.PaymentMethod, order.PaymentChannel, order.PaymentNumber,
+		order.PaymentQRURL, order.PaymentQRString, order.PaymentExpiresAt,
+		order.PaidAt, order.ExpiresAt, order.CreatedAt, order.UpdatedAt,
 	)
 	if err != nil {
 		return err

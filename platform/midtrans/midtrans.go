@@ -11,7 +11,9 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/midtrans/midtrans-go"
 	"github.com/midtrans/midtrans-go/coreapi"
@@ -44,6 +46,23 @@ type SnapResult struct {
 	Token       string
 	RedirectURL string
 	Simulated   bool
+}
+
+// ChargeResult adalah ringkasan hasil pembuatan transaksi Core API (QRIS/VA).
+//
+// Pada mode simulasi seluruh nilai diisi secara deterministik agar halaman
+// pembayaran tetap dapat diuji tanpa akun Midtrans.
+type ChargeResult struct {
+	TransactionID     string
+	OrderID           string
+	GrossAmount       string
+	PaymentType       string
+	QRString          string
+	QRURL             string
+	VANumber          string
+	Bank              string
+	ExpiryTime        string
+	TransactionStatus string
 }
 
 // StatusResult adalah ringkasan status transaksi dari Midtrans.
@@ -138,6 +157,130 @@ func (c *Client) CreateSnapToken(_ context.Context, req Request) (*SnapResult, e
 		return nil, fmt.Errorf("gagal membuat token Midtrans: %w", mErr)
 	}
 	return &SnapResult{Token: response.Token, RedirectURL: response.RedirectURL}, nil
+}
+
+// ChargeQRIS membuat transaksi QRIS melalui Core API agar kode QR dapat
+// dirender langsung pada halaman pembayaran.
+func (c *Client) ChargeQRIS(_ context.Context, req Request) (*ChargeResult, error) {
+	if c.simulate {
+		return simulatedCharge("qris", "qris", req), nil
+	}
+
+	chargeReq := newChargeReq(req, coreapi.PaymentTypeQris)
+	chargeReq.Qris = &coreapi.QrisDetails{}
+	return c.charge(chargeReq)
+}
+
+// ChargeVA membuat transaksi bank transfer (virtual account) melalui Core API.
+// bankName bernilai bca, bni, bri, atau permata.
+func (c *Client) ChargeVA(_ context.Context, bankName string, req Request) (*ChargeResult, error) {
+	bank := strings.ToLower(strings.TrimSpace(bankName))
+	if c.simulate {
+		return simulatedCharge("bank_transfer", bank, req), nil
+	}
+
+	chargeReq := newChargeReq(req, coreapi.PaymentTypeBankTransfer)
+	chargeReq.BankTransfer = &coreapi.BankTransferDetails{Bank: midtrans.Bank(bank)}
+	return c.charge(chargeReq)
+}
+
+// newChargeReq melengkapi permintaan charge dengan data transaksi, pelanggan,
+// dan masa berlaku.
+func newChargeReq(req Request, paymentType coreapi.CoreapiPaymentType) *coreapi.ChargeReq {
+	chargeReq := &coreapi.ChargeReq{
+		PaymentType: paymentType,
+		TransactionDetails: midtrans.TransactionDetails{
+			OrderID:  req.OrderID,
+			GrossAmt: req.Amount,
+		},
+		CustomerDetails: &midtrans.CustomerDetails{
+			FName: req.CustomerName,
+			Email: req.CustomerEmail,
+			Phone: req.CustomerPhone,
+		},
+	}
+	if req.ExpiryMinutes > 0 {
+		chargeReq.CustomExpiry = &coreapi.CustomExpiry{
+			ExpiryDuration: req.ExpiryMinutes,
+			Unit:           "minute",
+		}
+	}
+	return chargeReq
+}
+
+// charge mengirim permintaan charge ke Core API dan meringkas responsnya.
+func (c *Client) charge(req *coreapi.ChargeReq) (*ChargeResult, error) {
+	response, mErr := c.coreClient.ChargeTransaction(req)
+	if mErr != nil {
+		return nil, fmt.Errorf("gagal membuat transaksi Midtrans: %w", mErr)
+	}
+
+	result := &ChargeResult{
+		TransactionID:     response.TransactionID,
+		OrderID:           response.OrderID,
+		GrossAmount:       response.GrossAmount,
+		PaymentType:       response.PaymentType,
+		QRString:          response.QRString,
+		VANumber:          response.PermataVaNumber,
+		Bank:              response.Bank,
+		ExpiryTime:        response.ExpiryTime,
+		TransactionStatus: response.TransactionStatus,
+	}
+	if len(response.VaNumbers) > 0 {
+		result.VANumber = response.VaNumbers[0].VANumber
+		result.Bank = response.VaNumbers[0].Bank
+	}
+	for _, action := range response.Actions {
+		if strings.HasPrefix(strings.ToLower(action.Name), "generate-qr") {
+			result.QRURL = action.URL
+			break
+		}
+	}
+	return result, nil
+}
+
+// simulatedCharge membentuk data pembayaran palsu yang deterministik sehingga
+// alur pembayaran tetap dapat diuji tanpa memanggil jaringan Midtrans.
+func simulatedCharge(paymentType, method string, req Request) *ChargeResult {
+	minutes := req.ExpiryMinutes
+	if minutes <= 0 {
+		minutes = 60
+	}
+	expiry := time.Now().Add(time.Duration(minutes) * time.Minute)
+
+	result := &ChargeResult{
+		TransactionID:     "simulate-" + req.OrderID,
+		OrderID:           req.OrderID,
+		GrossAmount:       strconv.FormatInt(req.Amount, 10),
+		PaymentType:       paymentType,
+		TransactionStatus: "pending",
+		ExpiryTime:        expiry.Format("2006-01-02 15:04:05"),
+	}
+	if method == "qris" {
+		result.QRString = "SIMULASI-QRIS:" + req.OrderID
+	} else {
+		result.Bank = method
+		result.VANumber = simulatedVANumber(req.OrderID)
+	}
+	return result
+}
+
+// simulatedVANumber membentuk nomor VA palsu: awalan 8808 diikuti 10 digit
+// terakhir kode order.
+func simulatedVANumber(orderID string) string {
+	digits := make([]byte, 0, len(orderID))
+	for i := 0; i < len(orderID); i++ {
+		if orderID[i] >= '0' && orderID[i] <= '9' {
+			digits = append(digits, orderID[i])
+		}
+	}
+	if len(digits) > 10 {
+		digits = digits[len(digits)-10:]
+	}
+	for len(digits) < 10 {
+		digits = append([]byte{'0'}, digits...)
+	}
+	return "8808" + string(digits)
 }
 
 // TransactionStatus mengambil status transaksi terkini dari Midtrans.

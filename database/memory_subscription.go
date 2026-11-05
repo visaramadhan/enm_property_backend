@@ -192,10 +192,14 @@ func (r *memoryOrderRepository) List(q ListQuery) ([]*models.Order, int, error) 
 		if provider := q.Filter("provider"); provider != "" && string(order.Provider) != provider {
 			continue
 		}
+		if kind := q.Filter("kind"); kind != "" && string(order.Kind) != kind {
+			continue
+		}
 		if !withinRange(order.CreatedAt, q) {
 			continue
 		}
-		if q.Search != "" && !ContainsFold(order.Code, q.Search) && !ContainsFold(order.PartnerName, q.Search) {
+		if q.Search != "" && !ContainsFold(order.Code, q.Search) &&
+			!ContainsFold(order.PlanName, q.Search) && !ContainsFold(order.PartnerName, q.Search) {
 			continue
 		}
 		filtered = append(filtered, order)

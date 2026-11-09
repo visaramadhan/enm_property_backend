@@ -35,12 +35,15 @@ type Token struct {
 // Client membungkus klien Auth Firebase beserta mode pengembangan.
 type Client struct {
 	auth     *auth.Client
+	verifier *idTokenVerifier
 	devMode  bool
 	devToken string
 }
 
 // New membuat klien Firebase Admin. Bila kredensial belum tersedia, klien tetap
-// dibuat dalam mode terbatas dan hanya token uji yang akan diterima.
+// dibuat dalam mode terbatas: token uji diterima dan ID token Firebase asli
+// diverifikasi memakai kunci publik Google (tanpa service account). Operasi
+// pengelolaan akun baru aktif setelah kredensial Admin SDK diisi.
 func New(ctx context.Context, cfg config.Firebase, authCfg config.Auth) (*Client, error) {
 	client := &Client{
 		devMode:  authCfg.DevMode,
@@ -48,6 +51,9 @@ func New(ctx context.Context, cfg config.Firebase, authCfg config.Auth) (*Client
 	}
 
 	if cfg.CredentialsFile == "" && cfg.CredentialsJSON == "" {
+		if strings.TrimSpace(cfg.ProjectID) != "" {
+			client.verifier = newIDTokenVerifier(cfg.ProjectID)
+		}
 		return client, nil
 	}
 
@@ -93,6 +99,11 @@ func (c *Client) VerifyIDToken(ctx context.Context, idToken string) (*Token, err
 	}
 
 	if c.auth == nil {
+		// Kredensial Admin SDK belum tersedia: verifikasi memakai kunci publik
+		// Google agar Firebase/Google Sign-In tetap dapat digunakan.
+		if c.verifier != nil {
+			return c.verifier.verify(ctx, idToken)
+		}
 		return nil, httpx.Unauthorized("Layanan autentikasi belum dikonfigurasi")
 	}
 

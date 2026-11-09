@@ -67,3 +67,37 @@ func (h *CatalogHandler) Contact(c *gin.Context) {
 	}
 	httpx.OK(c, response)
 }
+
+// Partner mengembalikan profil pengelola (mitra) beserta katalog publiknya.
+func (h *CatalogHandler) Partner(c *gin.Context) {
+	var params dto.IDParam
+	if !middleware.BindURI(c, &params) {
+		return
+	}
+
+	view, err := h.services.Catalog.GetPartner(params.ID)
+	if err != nil {
+		httpx.Respond(c, err)
+		return
+	}
+	httpx.OK(c, view)
+}
+
+// ContactForm menyimpan lead dari form kontak publik pada detail properti.
+func (h *CatalogHandler) ContactForm(c *gin.Context) {
+	var params dto.SlugParam
+	if !middleware.BindURI(c, &params) {
+		return
+	}
+	var req dto.ContactFormRequest
+	if !middleware.BindJSON(c, &req) {
+		return
+	}
+
+	response, err := h.services.Catalog.SubmitContactForm(params.Slug, req, middleware.CurrentUser(c))
+	if err != nil {
+		httpx.Respond(c, err)
+		return
+	}
+	httpx.Created(c, response)
+}

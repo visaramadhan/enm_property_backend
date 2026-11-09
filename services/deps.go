@@ -51,6 +51,7 @@ type Services struct {
 	Favorite     *FavoriteService
 	Report       *ReportService
 	Setting      *SettingService
+	Landing      *LandingService
 	Audit        *AuditService
 	Scheduler    *SchedulerService
 }
@@ -94,6 +95,7 @@ func NewServices(deps Deps) *Services {
 		Favorite:     favorite,
 		Report:       report,
 		Setting:      setting,
+		Landing:      &LandingService{deps: deps},
 		Audit:        audit,
 	}
 	services.Scheduler = &SchedulerService{

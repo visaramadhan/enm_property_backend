@@ -153,7 +153,11 @@ type SubscriptionView struct {
 	ListingsUsed       int       `json:"listings_used"`
 	ListingQuota       int       `json:"listing_quota"`
 	ListingRemaining   int       `json:"listing_remaining"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	// BoostQuota adalah kuota boost listing paket aktif; 0 berarti tanpa boost.
+	BoostQuota int `json:"boost_quota"`
+	// BoostUsed adalah jumlah listing mitra yang sedang di-boost bersamaan.
+	BoostUsed  int       `json:"boost_used"`
+	UpdatedAt  time.Time `json:"updated_at"`
 	LastOrderCode      string    `json:"last_order_code,omitempty"`
 }
 

@@ -1,6 +1,9 @@
 package services
 
 import (
+	"context"
+	"mime/multipart"
+	"path"
 	"strings"
 	"sync"
 
@@ -12,6 +15,14 @@ import (
 // maskedValue adalah teks tersamar yang dikirim klien untuk pengaturan rahasia.
 // Nilai tersamar tidak boleh menimpa nilai asli saat disimpan kembali.
 const maskedValue = "********"
+
+// Jenis gambar pengaturan yang dapat diunggah beserta lebar maksimumnya.
+const (
+	settingImageKindLogo      = "logo"
+	settingImageKindLogin     = "login"
+	settingImageLogoMaxWidth  = 1024
+	settingImageLoginMaxWidth = 1920
+)
 
 // SettingService mengelola pengaturan sistem (BE-14) beserta cache sederhana
 // agar modul lain dapat membaca nilai yang sering dipakai tanpa menyentuh
@@ -109,6 +120,59 @@ func (s *SettingService) SiteLogoURL() string {
 // daftar). Nilai kosong berarti panel memakai latar gradien bawaan.
 func (s *SettingService) LoginImageURL() string {
 	return s.GetValue(models.SettingLoginImageURL)
+}
+
+// UploadImage menyimpan berkas gambar pengaturan (logo situs atau gambar area
+// masuk), mengubahnya menjadi WebP, lalu memperbarui nilai pengaturan terkait
+// dan cache-nya. `kind` bernilai "logo" atau "login".
+func (s *SettingService) UploadImage(ctx context.Context, kind string, file *multipart.FileHeader, actorID string) (dto.SettingImageResponse, error) {
+	var (
+		key      string
+		maxWidth int
+	)
+	switch strings.TrimSpace(kind) {
+	case settingImageKindLogo:
+		key = models.SettingSiteLogoURL
+		maxWidth = settingImageLogoMaxWidth
+	case settingImageKindLogin:
+		key = models.SettingLoginImageURL
+		maxWidth = settingImageLoginMaxWidth
+	default:
+		return dto.SettingImageResponse{}, httpx.BadRequest("Jenis gambar pengaturan tidak dikenal")
+	}
+
+	if err := validateImageUpload(s.deps.Config.Storage, file); err != nil {
+		return dto.SettingImageResponse{}, err
+	}
+	raw, err := readUpload(file)
+	if err != nil {
+		return dto.SettingImageResponse{}, err
+	}
+
+	processed, width, height, err := processLandingImage(raw, maxWidth)
+	if err != nil {
+		return dto.SettingImageResponse{}, err
+	}
+
+	objectPath := path.Join("settings", kind+"-"+newID()+".webp")
+	url, err := s.deps.Storage.Save(ctx, objectPath, processed)
+	if err != nil {
+		return dto.SettingImageResponse{}, httpx.Internal(err)
+	}
+
+	setting := &models.Setting{Key: key, Value: url, UpdatedBy: actorID, UpdatedAt: timeNow()}
+	if err := s.deps.Repos.Settings.Set(setting); err != nil {
+		return dto.SettingImageResponse{}, httpx.Internal(err)
+	}
+	s.storeCache(key, url)
+
+	return dto.SettingImageResponse{
+		Key:       key,
+		URL:       url,
+		Width:     width,
+		Height:    height,
+		SizeBytes: int64(len(processed)),
+	}, nil
 }
 
 // loadCache membaca nilai cache tanpa menyentuh repository.

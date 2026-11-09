@@ -254,6 +254,47 @@ func (s *CatalogService) GetDetail(slugOrID string, viewer *models.User) (dto.Pr
 	return view, nil
 }
 
+// GetPartner mengembalikan profil pengelola (mitra) beserta katalog publik
+// miliknya untuk halaman /pengelola/{id}.
+func (s *CatalogService) GetPartner(id string) (dto.PartnerPublicView, error) {
+	key := strings.TrimSpace(id)
+	if key == "" {
+		return dto.PartnerPublicView{}, httpx.BadRequest("Pengelola tidak disebutkan")
+	}
+
+	partner, err := s.deps.Repos.Partners.GetByID(key)
+	if err != nil {
+		if database.IsNotFound(err) {
+			return dto.PartnerPublicView{}, httpx.NotFound("Pengelola tidak ditemukan")
+		}
+		return dto.PartnerPublicView{}, httpx.Internal(err)
+	}
+
+	query := database.ListQuery{Filters: newFilters()}
+	query.Filters["partner_id"] = partner.ID
+	query.Filters["public"] = "true"
+
+	properties, _, err := s.deps.Repos.Properties.List(query)
+	if err != nil {
+		return dto.PartnerPublicView{}, httpx.Internal(err)
+	}
+	s.rank(properties, "")
+
+	summaries := dto.NewPropertySummaries(properties)
+	s.attachCategoryNames(summaries)
+
+	return dto.PartnerPublicView{
+		ID:            partner.ID,
+		BusinessName:  partner.BusinessName,
+		PICName:       partner.PICName,
+		City:          partner.City,
+		Province:      partner.Province,
+		JoinedAt:      partner.JoinedAt,
+		TotalListings: len(summaries),
+		Properties:    summaries,
+	}, nil
+}
+
 // GetContact mengembalikan nomor WhatsApp mitra, atau nomor admin sebagai
 // cadangan bila mitra belum mengisi kontaknya.
 func (s *CatalogService) GetContact(slugOrID string, viewer *models.User) (dto.ContactResponse, error) {
@@ -286,6 +327,34 @@ func (s *CatalogService) GetContact(slugOrID string, viewer *models.User) (dto.C
 	return response, nil
 }
 
+// SubmitContactForm mencatat lead dari form kontak publik pada halaman detail
+// properti. Lead tersimpan dengan kanal "form" beserta data pengirim.
+func (s *CatalogService) SubmitContactForm(slugOrID string, req dto.ContactFormRequest, viewer *models.User) (dto.ContactFormResponse, error) {
+	property, err := s.publicProperty(slugOrID)
+	if err != nil {
+		return dto.ContactFormResponse{}, err
+	}
+
+	contact := &models.PropertyContact{
+		ID:         newID(),
+		PropertyID: property.ID,
+		PartnerID:  property.PartnerID,
+		Channel:    "form",
+		Name:       strings.TrimSpace(req.Name),
+		Phone:      strings.TrimSpace(req.Phone),
+		Message:    strings.TrimSpace(req.Message),
+		CreatedAt:  timeNow(),
+	}
+	if viewer != nil {
+		contact.UserID = viewer.ID
+	}
+
+	if err := s.deps.Repos.Analytics.AddContact(contact); err != nil {
+		return dto.ContactFormResponse{}, httpx.Internal(err)
+	}
+	return dto.ContactFormResponse{Recorded: true}, nil
+}
+
 // publicProperty mengambil properti yang boleh tampil di katalog publik.
 func (s *CatalogService) publicProperty(slugOrID string) (*models.Property, error) {
 	key := strings.TrimSpace(slugOrID)
@@ -310,9 +379,12 @@ func (s *CatalogService) publicProperty(slugOrID string) (*models.Property, erro
 }
 
 // contactMessage menyusun pesan WhatsApp awal berisi judul dan tautan properti.
+//
+// Tautan mengarah ke halaman detail katalog publik (`/katalog/<slug>`) agar
+// mitra dapat membuka listing yang dimaksud dari pesan.
 func (s *CatalogService) contactMessage(property *models.Property) string {
 	base := strings.TrimRight(s.deps.Config.App.FrontendURL, "/")
-	link := base + "/properti/" + property.Slug
+	link := base + "/katalog/" + property.Slug
 	return "Halo, saya tertarik dengan properti \"" + property.Title + "\" (" + link + "). Mohon informasi lebih lanjut."
 }
 

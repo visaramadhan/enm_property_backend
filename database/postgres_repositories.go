@@ -21,6 +21,7 @@ func NewPostgresRepositories(pool *pgxpool.Pool) Repositories {
 		Favorites:     &postgresFavoriteRepository{pool: pool},
 		Analytics:     &postgresAnalyticsRepository{pool: pool},
 		Settings:      &postgresSettingRepository{pool: pool},
+		Landings:      &postgresLandingRepository{pool: pool},
 		Audits:        &postgresAuditRepository{pool: pool},
 	}
 }

@@ -73,6 +73,7 @@ func New(deps Deps) *gin.Engine {
 	adminAgreementHandler := handler.NewAdminAgreementHandler(svc)
 	adminSettingHandler := handler.NewAdminSettingHandler(svc)
 	siteSettingHandler := handler.NewSiteSettingHandler(svc)
+	landingHandler := handler.NewLandingHandler(svc)
 	adminAuditHandler := handler.NewAdminAuditHandler(svc)
 	ownerHandler := handler.NewOwnerHandler(svc)
 
@@ -117,12 +118,24 @@ func New(deps Deps) *gin.Engine {
 
 	api.GET("/properties", catalogHandler.Search)
 	api.GET("/properties/:slug", catalogHandler.Detail)
-	api.GET("/properties/:slug/contact", catalogHandler.Contact)
+	// Form kontak publik pada halaman detail properti (lead kanal "form").
+	// Memakai autentikasi opsional: pengunjung anonim tetap dilayani, sedangkan
+	// pengunjung yang sudah login ikut tercatat pada lead.
+	api.POST("/properties/:slug/contact-form",
+		middleware.OptionalAuth(deps.Firebase, deps.Repos.Users),
+		catalogHandler.ContactForm,
+	)
+
+	// Profil pengelola (mitra) beserta katalog publiknya.
+	api.GET("/partners/:id", catalogHandler.Partner)
 
 	api.GET("/agreements/active", agreementHandler.Active)
 
 	// Pengaturan tampilan (nama situs, logo, gambar area masuk) untuk halaman publik.
 	api.GET("/settings", siteSettingHandler.Get)
+
+	// Konten landing page yang dirender ISR oleh frontend.
+	api.GET("/landing", landingHandler.Get)
 
 	api.POST("/payments/midtrans/notification",
 		middleware.RateLimit(cfg.RateLimit, cfg.RateLimit.WebhookRequests),
@@ -134,6 +147,9 @@ func New(deps Deps) *gin.Engine {
 	authed := api.Group("", authRequired)
 	authed.GET("/me", meHandler.Get)
 	authed.PUT("/me", meHandler.Update)
+	// Kontak WhatsApp mencatat pengguna yang menghubungi mitra; karenanya
+	// endpoint ini mensyaratkan login (pengunjung diarahkan masuk lebih dulu).
+	authed.GET("/properties/:slug/contact", catalogHandler.Contact)
 	authed.POST("/partners/register", partnerHandler.Register)
 	authed.POST("/subscriptions/checkout",
 		middleware.RateLimit(cfg.RateLimit, cfg.RateLimit.CheckoutRequests),
@@ -175,6 +191,10 @@ func New(deps Deps) *gin.Engine {
 	vendor.DELETE("/properties/:id", activePackage, vendorPropertyHandler.Delete)
 	vendor.PATCH("/properties/:id/status", activePackage, vendorPropertyHandler.SetStatus)
 	vendor.PATCH("/properties/:id/availability", activePackage, vendorPropertyHandler.SetAvailability)
+	// Boost listing dibatasi kuota paket aktif.
+	vendor.PATCH("/properties/:id/boost", activePackage, vendorPropertyHandler.SetBoost)
+	// Catatan lead (klik WhatsApp / isi form) untuk tabel properti mitra.
+	vendor.GET("/properties/:id/leads", vendorPropertyHandler.Leads)
 	vendor.DELETE("/properties/:id/photos/:photoId", activePackage, vendorMediaHandler.Delete)
 	vendor.PATCH("/properties/:id/photos/order", activePackage, vendorMediaHandler.Order)
 	vendor.PATCH("/properties/:id/photos/:photoId/primary", activePackage, vendorMediaHandler.SetPrimary)
@@ -216,12 +236,36 @@ func New(deps Deps) *gin.Engine {
 	// Master data kategori dapat dibaca admin, diubah khusus superadmin.
 	admin.GET("/categories", adminCategoryHandler.List)
 
+	// Konten landing page: admin dan superadmin boleh mengubah lalu publikasi.
+	admin.GET("/landing", landingHandler.Get)
+	admin.PUT("/landing", landingHandler.Update)
+	admin.POST("/landing/publish", landingHandler.Publish)
+
 	uploads.POST("/admin/properties/:id/photos",
 		authRequired,
 		middleware.RequireRole(models.RoleAdmin, models.RoleSuperadmin),
 		auditHook,
 		middleware.UploadGuard(cfg.Storage),
 		adminMediaHandler.Upload,
+	)
+
+	// Unggah gambar landing (hero/og) dengan konversi otomatis ke WebP.
+	uploads.POST("/admin/landing/images/:kind",
+		authRequired,
+		middleware.RequireRole(models.RoleAdmin, models.RoleSuperadmin),
+		auditHook,
+		middleware.UploadGuard(cfg.Storage),
+		landingHandler.UploadImage,
+	)
+
+	// Unggah gambar pengaturan (logo situs / gambar area masuk) dengan konversi
+	// otomatis ke WebP; URL hasil disimpan ke pengaturan terkait.
+	uploads.POST("/admin/settings/images/:kind",
+		authRequired,
+		middleware.RequireRole(models.RoleSuperadmin),
+		auditHook,
+		middleware.UploadGuard(cfg.Storage),
+		adminSettingHandler.UploadImage,
 	)
 
 	// --- Superadmin ---------------------------------------------------------
@@ -265,6 +309,8 @@ func New(deps Deps) *gin.Engine {
 	owner.GET("/dashboard", ownerHandler.Dashboard)
 	owner.GET("/reports/subscriptions", ownerHandler.Subscriptions)
 	owner.GET("/reports/partners", ownerHandler.Partners)
+	// Owner hanya dapat melihat konten landing page (tanpa hak ubah).
+	owner.GET("/landing", landingHandler.Get)
 
 	return engine
 }

@@ -724,6 +724,44 @@ func (h *AdminSettingHandler) Update(c *gin.Context) {
 	httpx.OK(c, views)
 }
 
+// UploadImage mengunggah gambar pengaturan (logo situs atau gambar area masuk)
+// dan menyimpan URL hasilnya ke pengaturan terkait.
+func (h *AdminSettingHandler) UploadImage(c *gin.Context) {
+	var params dto.KindParam
+	if !middleware.BindURI(c, &params) {
+		return
+	}
+
+	files, err := uploadedFiles(c)
+	if err != nil {
+		httpx.Respond(c, httpx.BadRequest("Formulir unggahan tidak valid"))
+		return
+	}
+	if len(files) == 0 {
+		httpx.Respond(c, httpx.BadRequest("Tidak ada gambar yang diunggah"))
+		return
+	}
+
+	actor := middleware.CurrentUser(c)
+	actorID := ""
+	if actor != nil {
+		actorID = actor.ID
+	}
+
+	result, err := h.services.Setting.UploadImage(c.Request.Context(), params.Kind, files[0], actorID)
+	if err != nil {
+		httpx.Respond(c, err)
+		return
+	}
+
+	middleware.SetAudit(c, middleware.AuditEntry{
+		Action: models.AuditActionUpdate,
+		Entity: "setting",
+		Note:   "gambar pengaturan " + params.Kind + " diperbarui",
+	})
+	httpx.Created(c, result)
+}
+
 // AdminAuditHandler menyajikan dan mengekspor audit log.
 type AdminAuditHandler struct {
 	services *services.Services

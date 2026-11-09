@@ -78,24 +78,25 @@ func (s *PlanService) Create(req dto.CreatePlanRequest) (dto.PlanView, error) {
 
 	now := timeNow()
 	plan := &models.Plan{
-		ID:           newID(),
-		Slug:         planSlug,
-		Name:         strings.TrimSpace(req.Name),
-		Description:  strings.TrimSpace(req.Description),
-		Price:        req.Price,
-		DurationDays: req.DurationDays,
-		ListingQuota: req.ListingQuota,
-		Features:     cleanList(req.Features),
-		IsFree:       req.IsFree || req.Price == 0,
-		IsActive:     req.IsActive,
-		SortOrder:    req.SortOrder,
-		Level:        req.Level,
-		BoostEnabled: req.BoostEnabled,
+		ID:             newID(),
+		Slug:           planSlug,
+		Name:           strings.TrimSpace(req.Name),
+		Description:    strings.TrimSpace(req.Description),
+		Price:          req.Price,
+		DurationDays:   req.DurationDays,
+		ListingQuota:   req.ListingQuota,
+		Features:       cleanList(req.Features),
+		IsFree:         req.IsFree || req.Price == 0,
+		IsActive:       req.IsActive,
+		SortOrder:      req.SortOrder,
+		Level:          req.Level,
+		BoostEnabled:   req.BoostEnabled,
+		BoostQuota:     req.BoostQuota,
 		KeywordAccess:  req.KeywordAccess,
 		CatalogAccess:  req.CatalogAccess,
 		WhatsAppAccess: req.WhatsAppAccess,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		CreatedAt:      now,
+		UpdatedAt:      now,
 	}
 	// Paket gratis tidak boleh memiliki akses lanjutan maupun boost.
 	plan.ApplyAccessRules()
@@ -147,6 +148,9 @@ func (s *PlanService) Update(id string, req dto.UpdatePlanRequest) (dto.PlanView
 	}
 	if req.BoostEnabled != nil {
 		plan.BoostEnabled = *req.BoostEnabled
+	}
+	if req.BoostQuota != nil {
+		plan.BoostQuota = *req.BoostQuota
 	}
 	if req.KeywordAccess != nil {
 		plan.KeywordAccess = *req.KeywordAccess

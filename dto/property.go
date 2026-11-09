@@ -62,37 +62,40 @@ type PartnerSummary struct {
 
 // PropertySummary adalah bentuk ringkas properti untuk kartu katalog dan tabel.
 type PropertySummary struct {
-	ID                string     `json:"id"`
-	Slug              string     `json:"slug"`
-	Title             string     `json:"title"`
-	ListingType       string     `json:"listing_type"`
-	ListingTypeLabel  string     `json:"listing_type_label"`
-	PropertyType      string     `json:"property_type"`
-	PropertyTypeLabel string     `json:"property_type_label"`
-	City              string     `json:"city"`
-	Province          string     `json:"province"`
-	CategoryID        string     `json:"category_id,omitempty"`
-	CategoryName      string     `json:"category_name,omitempty"`
-	Price             int64      `json:"price"`
-	PriceLabel        string     `json:"price_label"`
-	PricePeriod       string     `json:"price_period,omitempty"`
-	LandArea          int        `json:"land_area"`
-	BuildingArea      int        `json:"building_area"`
-	Bedrooms          int        `json:"bedrooms"`
-	Bathrooms         int        `json:"bathrooms"`
-	UnitsAvailable    int        `json:"units_available"`
-	CoverURL          string     `json:"cover_url"`
-	Status            string     `json:"status"`
-	StatusLabel       string     `json:"status_label"`
-	Views             int        `json:"views"`
-	ContactCount      int        `json:"contact_count"`
-	BoostActive       bool       `json:"boost_active"`
-	RatingCount       int        `json:"rating_count"`
-	RatingAvg         float64    `json:"rating_avg"`
-	FavoriteCount     int        `json:"favorite_count"`
-	IsFavorite        bool       `json:"is_favorite"`
-	PublishedAt       *time.Time `json:"published_at,omitempty"`
-	CreatedAt         time.Time  `json:"created_at"`
+	ID                string `json:"id"`
+	Slug              string `json:"slug"`
+	Title             string `json:"title"`
+	ListingType       string `json:"listing_type"`
+	ListingTypeLabel  string `json:"listing_type_label"`
+	PropertyType      string `json:"property_type"`
+	PropertyTypeLabel string `json:"property_type_label"`
+	City              string `json:"city"`
+	Province          string `json:"province"`
+	CategoryID        string `json:"category_id,omitempty"`
+	CategoryName      string `json:"category_name,omitempty"`
+	Price             int64  `json:"price"`
+	PriceLabel        string `json:"price_label"`
+	PricePeriod       string `json:"price_period,omitempty"`
+	LandArea          int    `json:"land_area"`
+	BuildingArea      int    `json:"building_area"`
+	Bedrooms          int    `json:"bedrooms"`
+	Bathrooms         int    `json:"bathrooms"`
+	UnitsAvailable    int    `json:"units_available"`
+	CoverURL          string `json:"cover_url"`
+	Status            string `json:"status"`
+	StatusLabel       string `json:"status_label"`
+	Views             int    `json:"views"`
+	ContactCount      int    `json:"contact_count"`
+	// Rincian lead per kanal; hanya diisi pada tabel properti mitra.
+	WaContactCount   int        `json:"wa_contact_count"`
+	FormContactCount int        `json:"form_contact_count"`
+	BoostActive      bool       `json:"boost_active"`
+	RatingCount      int        `json:"rating_count"`
+	RatingAvg        float64    `json:"rating_avg"`
+	FavoriteCount    int        `json:"favorite_count"`
+	IsFavorite       bool       `json:"is_favorite"`
+	PublishedAt      *time.Time `json:"published_at,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
 }
 
 // NewPropertySummary membentuk ringkasan properti dari entitas domain.
@@ -136,19 +139,19 @@ func NewPropertySummary(property *models.Property) PropertySummary {
 // PropertyDetail adalah bentuk lengkap properti untuk halaman detail dan form.
 type PropertyDetail struct {
 	PropertySummary
-	Description  string          `json:"description"`
-	Address      string          `json:"address"`
-	District     string          `json:"district"`
-	Latitude     float64         `json:"latitude"`
-	Longitude    float64         `json:"longitude"`
-	Facilities   []string        `json:"facilities"`
-	UnitsTotal   int             `json:"units_total"`
-	PartnerID    string          `json:"partner_id"`
-	PartnerName  string          `json:"partner_name"`
-	Partner      *PartnerSummary `json:"partner,omitempty"`
-	Photos       []PhotoView     `json:"photos"`
-	DeletedAt    *time.Time      `json:"deleted_at,omitempty"`
-	UpdatedAt    time.Time       `json:"updated_at"`
+	Description string          `json:"description"`
+	Address     string          `json:"address"`
+	District    string          `json:"district"`
+	Latitude    float64         `json:"latitude"`
+	Longitude   float64         `json:"longitude"`
+	Facilities  []string        `json:"facilities"`
+	UnitsTotal  int             `json:"units_total"`
+	PartnerID   string          `json:"partner_id"`
+	PartnerName string          `json:"partner_name"`
+	Partner     *PartnerSummary `json:"partner,omitempty"`
+	Photos      []PhotoView     `json:"photos"`
+	DeletedAt   *time.Time      `json:"deleted_at,omitempty"`
+	UpdatedAt   time.Time       `json:"updated_at"`
 }
 
 // NewPropertyDetail membentuk detail properti dari entitas domain.
@@ -273,6 +276,12 @@ type SetPropertyStatusRequest struct {
 // SetAvailabilityRequest adalah body PATCH /vendor/properties/{id}/availability.
 type SetAvailabilityRequest struct {
 	UnitsAvailable int `json:"units_available" validate:"gte=0,lte=10000"`
+}
+
+// SetBoostRequest adalah body PATCH /vendor/properties/{id}/boost.
+type SetBoostRequest struct {
+	// Active true mengaktifkan boost, false menonaktifkan.
+	Active bool `json:"active"`
 }
 
 // AdminPropertyStatusRequest adalah body PATCH /admin/properties/{id}/status.

@@ -86,6 +86,54 @@ func (s *PartnerService) Ensure(ctx context.Context, user *models.User, req dto.
 	return partner, nil
 }
 
+// EnsureFromUser memastikan pengguna memiliki profil kemitraan, membuatnya dari
+// data akun bila belum ada.
+//
+// Dipakai alur checkout paket pada kemitraan baru: profil awal cukup memuat data
+// akun (nama, email, telepon) agar order dapat dibuat, sedangkan data badan usaha
+// dilengkapi mitra setelah pembayaran berhasil (BE-04/BE-06).
+func (s *PartnerService) EnsureFromUser(ctx context.Context, user *models.User) (*models.Partner, error) {
+	if user == nil {
+		return nil, httpx.Unauthorized("Sesi pengguna tidak ditemukan")
+	}
+
+	partner, err := s.deps.Repos.Partners.GetByUserID(user.ID)
+	if err == nil && partner != nil {
+		return partner, nil
+	}
+	if err != nil && !database.IsNotFound(err) {
+		return nil, httpx.Internal(err)
+	}
+
+	nama := strings.TrimSpace(user.DisplayName())
+	if nama == "" {
+		if indeks := strings.Index(user.Email, "@"); indeks > 0 {
+			nama = user.Email[:indeks]
+		}
+	}
+	if nama == "" {
+		nama = "Mitra"
+	}
+
+	now := timeNow()
+	partner = &models.Partner{
+		ID:        newID(),
+		UserID:    user.ID,
+		Status:    models.PartnerStatusPending,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	s.applyProfile(partner, nama, nama, user.Phone, user.Email, "", "", "")
+
+	if err := s.deps.Repos.Partners.Create(partner); err != nil {
+		return nil, httpx.Internal(err)
+	}
+	if err := s.promoteToMitra(ctx, user); err != nil {
+		return nil, err
+	}
+	return partner, nil
+}
+
 // AcceptAgreement mencatat persetujuan perjanjian atas nama mitra (BE-06).
 func (s *PartnerService) AcceptAgreement(user *models.User, partner *models.Partner, agreementID string, meta RequestMeta) (*dto.AgreementAcceptanceView, error) {
 	return s.agreements.Accept(user, partner, agreementID, meta)

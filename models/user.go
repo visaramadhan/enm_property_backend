@@ -57,25 +57,28 @@ func (p *Partner) IsActive() bool { return p.Status == PartnerStatusActive }
 // bobot boost di katalog), serta akses ke pengaturan keyword, katalog, dan
 // nomor WhatsApp. Paket gratis tidak memperoleh ketiga akses tersebut.
 type Plan struct {
-	ID           string    `json:"id"`
-	Slug         string    `json:"slug"`
-	Name         string    `json:"name"`
-	Description  string    `json:"description"`
-	Price        int64     `json:"price"`
-	DurationDays int       `json:"duration_days"`
-	ListingQuota int       `json:"listing_quota"`
-	Features     []string  `json:"features"`
-	IsFree       bool      `json:"is_free"`
-	IsActive     bool      `json:"is_active"`
-	SortOrder    int       `json:"sort_order"`
+	ID           string   `json:"id"`
+	Slug         string   `json:"slug"`
+	Name         string   `json:"name"`
+	Description  string   `json:"description"`
+	Price        int64    `json:"price"`
+	DurationDays int      `json:"duration_days"`
+	ListingQuota int      `json:"listing_quota"`
+	Features     []string `json:"features"`
+	IsFree       bool     `json:"is_free"`
+	IsActive     bool     `json:"is_active"`
+	SortOrder    int      `json:"sort_order"`
 	// Level menentukan prioritas tampil di katalog (1 terendah, makin tinggi makin atas).
 	Level int `json:"level"`
 	// BoostEnabled menandakan paket boleh memakai fitur boost listing.
 	BoostEnabled bool `json:"boost_enabled"`
+	// BoostQuota adalah jumlah listing yang boleh di-boost bersamaan. Nilai 0
+	// berarti mitra tidak dapat memakai boost meski BoostEnabled bernilai true.
+	BoostQuota int `json:"boost_quota"`
 	// Akses pengaturan lanjutan sisi mitra.
-	KeywordAccess  bool `json:"keyword_access"`
-	CatalogAccess  bool `json:"catalog_access"`
-	WhatsAppAccess bool `json:"whatsapp_access"`
+	KeywordAccess  bool      `json:"keyword_access"`
+	CatalogAccess  bool      `json:"catalog_access"`
+	WhatsAppAccess bool      `json:"whatsapp_access"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
@@ -97,6 +100,10 @@ func (p *Plan) ApplyAccessRules() {
 		p.CatalogAccess = false
 		p.WhatsAppAccess = false
 		p.BoostEnabled = false
+		p.BoostQuota = 0
+	}
+	if p.BoostQuota < 0 {
+		p.BoostQuota = 0
 	}
 	if p.Level < 1 {
 		p.Level = 1

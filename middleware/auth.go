@@ -47,6 +47,29 @@ func FirebaseAuth(client *firebase.Client, users UserReader) gin.HandlerFunc {
 	}
 }
 
+// OptionalAuth mencoba memverifikasi token bila header Authorization ada, namun
+// tidak pernah menggagalkan permintaan. Dipakai endpoint publik yang tetap ingin
+// mencatat pengguna bila pengunjung sedang masuk (mis. form kontak properti):
+// pengunjung anonim tetap dilayani, sedangkan pengunjung yang login tercatat.
+func OptionalAuth(client *firebase.Client, users UserReader) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		raw := bearerToken(c)
+		if raw == "" {
+			c.Next()
+			return
+		}
+		token, err := client.VerifyIDToken(c.Request.Context(), raw)
+		if err != nil {
+			c.Next()
+			return
+		}
+		if user, err := users.GetByFirebaseUID(token.UID); err == nil && user.IsActive() {
+			SetUser(c, user)
+		}
+		c.Next()
+	}
+}
+
 // verifyToken memvalidasi header Authorization dan menaruh klaim token pada konteks.
 // Mengembalikan false bila permintaan sudah digagalkan dan c.Next() tidak boleh dipanggil.
 func verifyToken(c *gin.Context, client *firebase.Client) bool {

@@ -41,6 +41,9 @@ type App struct {
 	WordPressURL             string `env:"WORDPRESS_URL" envDefault:""`
 	WhatsAppAdmin            string `env:"WHATSAPP_ADMIN" envDefault:""`
 	SubscriptionReminderDays int    `env:"SUBSCRIPTION_REMINDER_DAYS" envDefault:"7"`
+	// RevalidationToken adalah kunci bersama dengan frontend untuk memicu
+	// revalidasi ISR landing page (endpoint /api/revalidate di Next.js).
+	RevalidationToken string `env:"REVALIDATION_TOKEN"`
 }
 
 // HTTP mengatur batas waktu, ukuran body, dan graceful shutdown HTTP server.

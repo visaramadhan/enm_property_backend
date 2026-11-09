@@ -10,8 +10,8 @@ import (
 )
 
 const planColumns = `id, slug, name, description, price, duration_days, listing_quota, features, ` +
-	`is_free, is_active, sort_order, level, boost_enabled, keyword_access, catalog_access, ` +
-	`whatsapp_access, created_at, updated_at`
+	`is_free, is_active, sort_order, level, boost_enabled, boost_quota, keyword_access, ` +
+	`catalog_access, whatsapp_access, created_at, updated_at`
 
 type postgresPlanRepository struct{ pool pgxPool }
 
@@ -21,8 +21,8 @@ func scanPlan(row pgx.Row) (*models.Plan, error) {
 	if err := row.Scan(
 		&plan.ID, &plan.Slug, &plan.Name, &plan.Description, &plan.Price, &plan.DurationDays,
 		&plan.ListingQuota, &plan.Features, &plan.IsFree, &plan.IsActive, &plan.SortOrder,
-		&plan.Level, &plan.BoostEnabled, &plan.KeywordAccess, &plan.CatalogAccess,
-		&plan.WhatsAppAccess, &plan.CreatedAt, &plan.UpdatedAt,
+		&plan.Level, &plan.BoostEnabled, &plan.BoostQuota, &plan.KeywordAccess,
+		&plan.CatalogAccess, &plan.WhatsAppAccess, &plan.CreatedAt, &plan.UpdatedAt,
 	); err != nil {
 		return nil, err
 	}
@@ -41,12 +41,12 @@ func (r *postgresPlanRepository) Create(plan *models.Plan) error {
 	}
 
 	const query = `INSERT INTO plans (` + planColumns + `)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`
 	_, err := r.pool.Exec(ctx, query,
 		plan.ID, plan.Slug, plan.Name, plan.Description, plan.Price, plan.DurationDays,
 		plan.ListingQuota, plan.Features, plan.IsFree, plan.IsActive, plan.SortOrder,
-		plan.Level, plan.BoostEnabled, plan.KeywordAccess, plan.CatalogAccess,
-		plan.WhatsAppAccess, plan.CreatedAt, plan.UpdatedAt,
+		plan.Level, plan.BoostEnabled, plan.BoostQuota, plan.KeywordAccess,
+		plan.CatalogAccess, plan.WhatsAppAccess, plan.CreatedAt, plan.UpdatedAt,
 	)
 	return err
 }
@@ -56,14 +56,14 @@ func (r *postgresPlanRepository) Update(plan *models.Plan) error {
 	const query = `UPDATE plans SET
 		slug = $2, name = $3, description = $4, price = $5, duration_days = $6,
 		listing_quota = $7, features = $8, is_free = $9, is_active = $10, sort_order = $11,
-		level = $12, boost_enabled = $13, keyword_access = $14, catalog_access = $15,
-		whatsapp_access = $16, created_at = $17, updated_at = $18
+		level = $12, boost_enabled = $13, boost_quota = $14, keyword_access = $15,
+		catalog_access = $16, whatsapp_access = $17, created_at = $18, updated_at = $19
 		WHERE id = $1`
 	tag, err := r.pool.Exec(ctx, query,
 		plan.ID, plan.Slug, plan.Name, plan.Description, plan.Price, plan.DurationDays,
 		plan.ListingQuota, plan.Features, plan.IsFree, plan.IsActive, plan.SortOrder,
-		plan.Level, plan.BoostEnabled, plan.KeywordAccess, plan.CatalogAccess,
-		plan.WhatsAppAccess, plan.CreatedAt, plan.UpdatedAt,
+		plan.Level, plan.BoostEnabled, plan.BoostQuota, plan.KeywordAccess,
+		plan.CatalogAccess, plan.WhatsAppAccess, plan.CreatedAt, plan.UpdatedAt,
 	)
 	if err != nil {
 		return err

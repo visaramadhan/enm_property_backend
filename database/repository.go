@@ -184,6 +184,10 @@ type AnalyticsRepository interface {
 	AddContact(contact *models.PropertyContact) error
 	Views() []*models.PropertyView
 	Contacts() []*models.PropertyContact
+	// ListContactsByProperty mengembalikan lead pada satu properti (terbaru dulu).
+	ListContactsByProperty(propertyID string) ([]*models.PropertyContact, error)
+	// ContactsByPartner mengembalikan seluruh lead milik satu mitra (terbaru dulu).
+	ContactsByPartner(partnerID string) ([]*models.PropertyContact, error)
 }
 
 // SettingRepository menangani pengaturan sistem.
@@ -191,6 +195,13 @@ type SettingRepository interface {
 	All() []*models.Setting
 	Get(key string) (*models.Setting, error)
 	Set(setting *models.Setting) error
+}
+
+// LandingRepository menangani konten landing page (CMS).
+type LandingRepository interface {
+	All() []*models.LandingContent
+	Get(key string) (*models.LandingContent, error)
+	Set(content *models.LandingContent) error
 }
 
 // AuditRepository menangani catatan audit.
@@ -213,6 +224,7 @@ type Repositories struct {
 	Favorites     FavoriteRepository
 	Analytics     AnalyticsRepository
 	Settings      SettingRepository
+	Landings      LandingRepository
 	Audits        AuditRepository
 }
 
@@ -230,6 +242,7 @@ func NewMemoryRepositories(store *Store) Repositories {
 		Favorites:     &memoryFavoriteRepository{store: store},
 		Analytics:     &memoryAnalyticsRepository{store: store},
 		Settings:      &memorySettingRepository{store: store},
+		Landings:      &memoryLandingRepository{store: store},
 		Audits:        &memoryAuditRepository{store: store},
 	}
 }

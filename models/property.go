@@ -108,12 +108,19 @@ type PropertyView struct {
 	ViewedAt   time.Time `json:"viewed_at"`
 }
 
-// PropertyContact mencatat satu lead WhatsApp yang diteruskan ke mitra.
+// PropertyContact mencatat satu lead (klik WhatsApp atau form kontak) yang
+// diteruskan ke mitra. Untuk kanal WhatsApp, UserID terisi bila pengunjung
+// sudah masuk; untuk kanal form, data pengirim disimpan pada kolom Name/Phone/
+// Message agar tetap tercatat walau pengunjung belum memiliki akun.
 type PropertyContact struct {
 	ID         string    `json:"id"`
 	PropertyID string    `json:"property_id"`
 	PartnerID  string    `json:"partner_id"`
 	UserID     string    `json:"user_id"`
 	Channel    string    `json:"channel"`
-	CreatedAt  time.Time `json:"created_at"`
+	// Name, Phone, dan Message hanya terisi pada kanal "form".
+	Name      string    `json:"name,omitempty"`
+	Phone     string    `json:"phone,omitempty"`
+	Message   string    `json:"message,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
 }

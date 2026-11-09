@@ -404,20 +404,24 @@ func (s *PaymentService) ExpireStaleOrders(now time.Time) (int, error) {
 	return expired, nil
 }
 
-// resolvePartner mengambil profil mitra pengguna, atau membuatnya dari data
-// pendaftaran yang dikirim bersama checkout.
+// resolvePartner mengambil profil mitra pengguna.
+//
+// Bila profil mitra belum ada, profil awal dibuat dari data akun sehingga
+// checkout dapat berjalan tanpa mengisi data badan usaha lebih dulu; data bisnis
+// dilengkapi mitra setelah pembayaran berhasil. Data pendaftaran (`req`) tetap
+// dipakai bila klien mengirimkannya lebih awal.
 func (s *PaymentService) resolvePartner(ctx context.Context, user *models.User, req *dto.RegisterPartnerRequest) (*models.Partner, error) {
 	if req != nil {
 		return s.partners.Ensure(ctx, user, *req)
 	}
 	partner, err := s.deps.Repos.Partners.GetByUserID(user.ID)
-	if err != nil {
-		if database.IsNotFound(err) {
-			return nil, httpx.Unprocessable("Lengkapi data kemitraan terlebih dahulu sebelum checkout")
-		}
+	if err == nil {
+		return partner, nil
+	}
+	if !database.IsNotFound(err) {
 		return nil, httpx.Internal(err)
 	}
-	return partner, nil
+	return s.partners.EnsureFromUser(ctx, user)
 }
 
 // resolveKind menentukan jenis order: baru, perpanjangan, atau upgrade.

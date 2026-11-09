@@ -53,6 +53,11 @@ type SlugParam struct {
 	Slug string `uri:"slug" validate:"required"`
 }
 
+// KindParam adalah parameter path berisi jenis gambar (mis. logo/login).
+type KindParam struct {
+	Kind string `uri:"kind" validate:"required"`
+}
+
 // CodeParam adalah parameter path berisi kode order.
 type CodeParam struct {
 	OrderCode string `uri:"orderCode" validate:"required"`

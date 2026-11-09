@@ -198,6 +198,41 @@ func (h *VendorPropertyHandler) SetAvailability(c *gin.Context) {
 	httpx.OK(c, detail)
 }
 
+// SetBoost mengaktifkan atau mematikan boost sebuah listing mitra.
+func (h *VendorPropertyHandler) SetBoost(c *gin.Context) {
+	var params dto.IDParam
+	if !middleware.BindURI(c, &params) {
+		return
+	}
+	var req dto.SetBoostRequest
+	if !middleware.BindJSON(c, &req) {
+		return
+	}
+
+	detail, err := h.services.Property.SetBoost(middleware.CurrentPartner(c), params.ID, req.Active)
+	if err != nil {
+		httpx.Respond(c, err)
+		return
+	}
+	httpx.OK(c, detail)
+}
+
+// Leads mengembalikan catatan lead pada satu properti mitra (opsional disaring
+// per kanal melalui query `channel`).
+func (h *VendorPropertyHandler) Leads(c *gin.Context) {
+	var params dto.IDParam
+	if !middleware.BindURI(c, &params) {
+		return
+	}
+
+	leads, err := h.services.Property.ListLeads(middleware.CurrentPartner(c), params.ID, c.Query("channel"))
+	if err != nil {
+		httpx.Respond(c, err)
+		return
+	}
+	httpx.OK(c, leads)
+}
+
 // VendorMediaHandler mengelola foto properti milik mitra.
 type VendorMediaHandler struct {
 	services *services.Services

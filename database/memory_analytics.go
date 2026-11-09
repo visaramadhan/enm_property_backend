@@ -47,3 +47,29 @@ func (r *memoryAnalyticsRepository) Contacts() []*models.PropertyContact {
 	}
 	return contacts
 }
+
+// ListContactsByProperty mengembalikan lead pada satu properti.
+func (r *memoryAnalyticsRepository) ListContactsByProperty(propertyID string) ([]*models.PropertyContact, error) {
+	r.store.mu.RLock()
+	defer r.store.mu.RUnlock()
+	contacts := make([]*models.PropertyContact, 0)
+	for _, contact := range r.store.contacts {
+		if contact.PropertyID == propertyID {
+			contacts = append(contacts, copyContact(contact))
+		}
+	}
+	return contacts, nil
+}
+
+// ContactsByPartner mengembalikan seluruh lead milik satu mitra.
+func (r *memoryAnalyticsRepository) ContactsByPartner(partnerID string) ([]*models.PropertyContact, error) {
+	r.store.mu.RLock()
+	defer r.store.mu.RUnlock()
+	contacts := make([]*models.PropertyContact, 0)
+	for _, contact := range r.store.contacts {
+		if contact.PartnerID == partnerID {
+			contacts = append(contacts, copyContact(contact))
+		}
+	}
+	return contacts, nil
+}

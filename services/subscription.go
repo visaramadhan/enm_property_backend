@@ -196,11 +196,13 @@ func (s *SubscriptionService) view(subscription *models.Subscription) dto.Subscr
 	quota := -1
 	if plan, err := s.deps.Repos.Plans.GetByID(subscription.PlanID); err == nil {
 		quota = plan.ListingQuota
+		view.BoostQuota = plan.BoostQuota
 	}
 	used := s.usage(subscription.PartnerID)
 	view.ListingQuota = quota
 	view.ListingsUsed = used
 	view.ListingRemaining = remainingQuota(quota, used)
+	view.BoostUsed = s.boostUsage(subscription.PartnerID)
 
 	if order, err := s.deps.Repos.Orders.GetByID(subscription.OrderID); err == nil {
 		view.LastOrderCode = order.Code
@@ -211,6 +213,25 @@ func (s *SubscriptionService) view(subscription *models.Subscription) dto.Subscr
 // usage menghitung jumlah properti mitra yang belum dihapus.
 func (s *SubscriptionService) usage(partnerID string) int {
 	return s.deps.Repos.Properties.CountByPartner(partnerID)
+}
+
+// boostUsage menghitung listing mitra yang sedang di-boost dan belum
+// kedaluwarsa, dipakai untuk menampilkan sisa kuota boost paket di sisi mitra.
+func (s *SubscriptionService) boostUsage(partnerID string) int {
+	properties, _, err := s.deps.Repos.Properties.List(database.ListQuery{
+		Filters: map[string]string{"partner_id": partnerID, "boost_active": "true"},
+	})
+	if err != nil {
+		return 0
+	}
+	now := timeNow()
+	count := 0
+	for _, property := range properties {
+		if property.BoostUntil == nil || property.BoostUntil.After(now) {
+			count++
+		}
+	}
+	return count
 }
 
 // expirePartner menandai mitra menjadi kedaluwarsa bila sedang aktif.

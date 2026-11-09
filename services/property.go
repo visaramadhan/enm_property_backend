@@ -19,6 +19,9 @@ var contentPolicy = bluemonday.UGCPolicy()
 // sanitize membuang tag HTML berbahaya dari teks deskripsi.
 func sanitize(html string) string { return strings.TrimSpace(contentPolicy.Sanitize(html)) }
 
+// boostDurationDays adalah lama masa aktif satu kali boost listing (hari).
+const boostDurationDays = 7
+
 // PropertyService mengelola listing properti mitra maupun admin (BE-09).
 type PropertyService struct {
 	deps          Deps
@@ -124,7 +127,9 @@ func (s *PropertyService) ListByPartner(partner *models.Partner, q dto.PropertyF
 	if err != nil {
 		return dto.ListResult[dto.PropertySummary]{}, httpx.Internal(err)
 	}
-	return dto.NewListResult(dto.NewPropertySummaries(properties), total), nil
+	summaries := dto.NewPropertySummaries(properties)
+	s.attachLeadCounts(partner.ID, summaries)
+	return dto.NewListResult(summaries, total), nil
 }
 
 // ListForAdmin mengembalikan daftar properti seluruh mitra untuk halaman admin.
@@ -191,6 +196,140 @@ func (s *PropertyService) SetAvailability(partner *models.Partner, id string, un
 		return dto.PropertyDetail{}, httpx.Internal(err)
 	}
 	return s.detail(property), nil
+}
+
+// SetBoost mengaktifkan atau mematikan boost sebuah listing mitra. Saat
+// diaktifkan, kuota boost paket aktif ditegakkan dan masa boost ditetapkan
+// selama boostDurationDays.
+func (s *PropertyService) SetBoost(partner *models.Partner, id string, active bool) (dto.PropertyDetail, error) {
+	property, err := s.owned(partner, id)
+	if err != nil {
+		return dto.PropertyDetail{}, err
+	}
+
+	if active {
+		plan, err := s.activePlan(partner.ID)
+		if err != nil {
+			return dto.PropertyDetail{}, err
+		}
+		if plan == nil || !plan.BoostEnabled || plan.BoostQuota <= 0 {
+			return dto.PropertyDetail{}, httpx.Unprocessable("Paket Anda belum menyediakan fitur boost listing")
+		}
+		if !property.BoostActive && s.activeBoostCount(partner.ID) >= plan.BoostQuota {
+			return dto.PropertyDetail{}, httpx.Unprocessable("Kuota boost paket sudah penuh, nonaktifkan boost lain atau upgrade paket Anda")
+		}
+		until := timeNow().AddDate(0, 0, boostDurationDays)
+		property.BoostActive = true
+		property.BoostUntil = &until
+	} else {
+		property.BoostActive = false
+		property.BoostUntil = nil
+	}
+	property.UpdatedAt = timeNow()
+
+	if err := s.deps.Repos.Properties.Update(property); err != nil {
+		return dto.PropertyDetail{}, httpx.Internal(err)
+	}
+	return s.detail(property), nil
+}
+
+// ListLeads mengembalikan catatan lead pada satu properti milik mitra, dapat
+// disaring per kanal ("whatsapp" atau "form").
+func (s *PropertyService) ListLeads(partner *models.Partner, propertyID, channel string) ([]dto.LeadView, error) {
+	property, err := s.owned(partner, propertyID)
+	if err != nil {
+		return nil, err
+	}
+
+	contacts, err := s.deps.Repos.Analytics.ListContactsByProperty(property.ID)
+	if err != nil {
+		return nil, httpx.Internal(err)
+	}
+
+	views := make([]dto.LeadView, 0, len(contacts))
+	for _, contact := range contacts {
+		if channel != "" && contact.Channel != channel {
+			continue
+		}
+		view := dto.LeadView{
+			ID:        contact.ID,
+			Channel:   contact.Channel,
+			UserID:    contact.UserID,
+			Name:      contact.Name,
+			Phone:     contact.Phone,
+			Message:   contact.Message,
+			CreatedAt: contact.CreatedAt,
+		}
+		if contact.UserID != "" {
+			if user, err := s.deps.Repos.Users.GetByID(contact.UserID); err == nil && user != nil {
+				view.UserName = user.DisplayName()
+				view.UserEmail = user.Email
+			}
+		}
+		views = append(views, view)
+	}
+	return views, nil
+}
+
+// attachLeadCounts melengkapi ringkasan properti dengan jumlah lead per kanal
+// (klik WhatsApp dan isi form) milik mitra.
+func (s *PropertyService) attachLeadCounts(partnerID string, summaries []dto.PropertySummary) {
+	if len(summaries) == 0 {
+		return
+	}
+	contacts, err := s.deps.Repos.Analytics.ContactsByPartner(partnerID)
+	if err != nil {
+		return
+	}
+	wa := map[string]int{}
+	form := map[string]int{}
+	for _, contact := range contacts {
+		switch contact.Channel {
+		case "whatsapp":
+			wa[contact.PropertyID]++
+		case "form":
+			form[contact.PropertyID]++
+		}
+	}
+	for i := range summaries {
+		summaries[i].WaContactCount = wa[summaries[i].ID]
+		summaries[i].FormContactCount = form[summaries[i].ID]
+	}
+}
+
+// activePlan mengembalikan paket dari langganan aktif mitra, atau nil bila
+// mitra tidak memiliki langganan aktif.
+func (s *PropertyService) activePlan(partnerID string) (*models.Plan, error) {
+	subscription := s.subscriptions.Active(partnerID)
+	if subscription == nil || !subscription.IsActiveAt(timeNow()) {
+		return nil, nil
+	}
+	plan, err := s.deps.Repos.Plans.GetByID(subscription.PlanID)
+	if err != nil {
+		return nil, nil
+	}
+	return plan, nil
+}
+
+// activeBoostCount menghitung listing mitra yang sedang di-boost dan belum
+// kedaluwarsa.
+func (s *PropertyService) activeBoostCount(partnerID string) int {
+	filters := newFilters()
+	filters["partner_id"] = partnerID
+	filters["boost_active"] = "true"
+
+	properties, _, err := s.deps.Repos.Properties.List(database.ListQuery{Filters: filters})
+	if err != nil {
+		return 0
+	}
+	now := timeNow()
+	count := 0
+	for _, property := range properties {
+		if property.BoostUntil == nil || property.BoostUntil.After(now) {
+			count++
+		}
+	}
+	return count
 }
 
 // AdminCreateForFree menambahkan properti atas nama mitra paket Free.

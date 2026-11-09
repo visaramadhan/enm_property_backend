@@ -56,3 +56,12 @@ type PublicSettingsView struct {
 	LogoURL       string `json:"logo_url"`
 	LoginImageURL string `json:"login_image_url"`
 }
+
+// SettingImageResponse adalah hasil unggahan gambar pengaturan (logo/latar masuk).
+type SettingImageResponse struct {
+	Key       string `json:"key"`
+	URL       string `json:"url"`
+	Width     int    `json:"width"`
+	Height    int    `json:"height"`
+	SizeBytes int64  `json:"size_bytes"`
+}

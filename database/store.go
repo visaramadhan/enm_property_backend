@@ -31,6 +31,7 @@ type Store struct {
 	views         []*models.PropertyView
 	contacts      []*models.PropertyContact
 	settings      map[string]*models.Setting
+	landing       map[string]*models.LandingContent
 	audits        []*models.AuditLog
 }
 
@@ -49,6 +50,7 @@ func NewStore() *Store {
 		photos:        make(map[string]*models.PropertyPhoto),
 		favorites:     make(map[string]*models.Favorite),
 		settings:      make(map[string]*models.Setting),
+		landing:       make(map[string]*models.LandingContent),
 	}
 }
 
@@ -195,6 +197,14 @@ func copyContact(in *models.PropertyContact) *models.PropertyContact {
 }
 
 func copySetting(in *models.Setting) *models.Setting {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	return &out
+}
+
+func copyLanding(in *models.LandingContent) *models.LandingContent {
 	if in == nil {
 		return nil
 	}

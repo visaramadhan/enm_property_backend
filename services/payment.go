@@ -215,7 +215,7 @@ func (s *PaymentService) Charge(ctx context.Context, user *models.User, orderCod
 		result, err = s.deps.Midtrans.ChargeVA(ctx, method, request)
 	}
 	if err != nil {
-		return dto.PaymentView{}, httpx.Internal(err)
+		return dto.PaymentView{}, chargeError(err)
 	}
 
 	s.applyChargeResult(order, method, result)
@@ -223,6 +223,24 @@ func (s *PaymentService) Charge(ctx context.Context, user *models.User, orderCod
 		return dto.PaymentView{}, httpx.Internal(err)
 	}
 	return s.paymentView(order), nil
+}
+
+// chargeError menerjemahkan kegagalan charge Midtrans menjadi respons yang
+// dapat ditindaklanjuti. Pesan asli Midtrans (mis. "Payment channel is not
+// activated") diteruskan dengan status 422 agar penyebabnya terlihat; bila
+// Midtrans justru melaporkan gangguan sisi layanan (5xx), pesan tetap
+// disamarkan melalui httpx.Internal.
+func chargeError(err error) *httpx.AppError {
+	if status, message, ok := midtrans.ErrorDetail(err); ok {
+		if message == "" {
+			message = "Transaksi pembayaran ditolak oleh Midtrans"
+		}
+		if status >= 500 {
+			return httpx.Internal(err)
+		}
+		return httpx.Unprocessable(message)
+	}
+	return httpx.Internal(err)
 }
 
 // GetPayment mengembalikan instruksi pembayaran yang sudah dibuat untuk order.

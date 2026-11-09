@@ -1,0 +1,27 @@
+# Konteks build backend: kirim hanya sumber yang diperlukan.
+# Rahasia dan data lokal tidak boleh masuk ke dalam image.
+
+# Rahasia: disuplai lewat environment compose, bukan disalin ke image.
+.env
+.env.local
+.env.*.local
+/secrets/
+
+# Data lokal (STORAGE_LOCAL_DIR).
+/storage/
+/uploads/
+
+# Hasil build lokal.
+/bin/
+*.exe
+*.exe~
+*.test
+*.out
+coverage.out
+
+# Lain-lain.
+.git
+.gitignore
+*.log
+.idea/
+.vscode/

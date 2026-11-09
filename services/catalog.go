@@ -25,7 +25,7 @@ type CatalogService struct {
 // Seluruh hasil yang cocok diambil tanpa paginasi lebih dulu agar algoritma
 // pengurutan (boost -> keyword -> klik WhatsApp -> rating -> favorit) dapat
 // diterapkan sebelum halaman dipotong.
-func (s *CatalogService) Search(q dto.PropertyFilterQuery) (dto.ListResult[dto.PropertySummary], error) {
+func (s *CatalogService) Search(q dto.PropertyFilterQuery, viewer *models.User) (dto.ListResult[dto.PropertySummary], error) {
 	query := q.ToListQuery()
 	if query.Filters == nil {
 		query.Filters = newFilters()
@@ -47,7 +47,21 @@ func (s *CatalogService) Search(q dto.PropertyFilterQuery) (dto.ListResult[dto.P
 
 	summaries := dto.NewPropertySummaries(pageItems)
 	s.attachCategoryNames(summaries)
+	s.markFavorites(summaries, viewer)
 	return dto.NewListResult(summaries, total), nil
+}
+
+// markFavorites menandai ringkasan properti yang sudah tersimpan pada daftar
+// favorit pengunjung yang sedang masuk, agar ikon favorit di katalog sesuai
+// keadaan sebenarnya. Pengunjung anonim dibiarkan tanpa penanda (semua false)
+// supaya hasil tetap sama untuk semua pengunjung.
+func (s *CatalogService) markFavorites(summaries []dto.PropertySummary, viewer *models.User) {
+	if viewer == nil || len(summaries) == 0 {
+		return
+	}
+	for i := range summaries {
+		summaries[i].IsFavorite = s.deps.Repos.Favorites.Exists(viewer.ID, summaries[i].ID)
+	}
 }
 
 // rankedProperty menyimpan komponen skor pengurutan sebuah properti.
@@ -239,6 +253,10 @@ func (s *CatalogService) GetDetail(slugOrID string, viewer *models.User) (dto.Pr
 	s.recordView(property)
 
 	view := dto.NewPropertyDetail(property)
+	if viewer != nil {
+		// Status favorit bersifat per pengguna sehingga hanya diisi bila ada sesi.
+		view.IsFavorite = s.deps.Repos.Favorites.Exists(viewer.ID, property.ID)
+	}
 	if partner, err := s.deps.Repos.Partners.GetByID(property.PartnerID); err == nil && partner != nil {
 		view.Partner = &dto.PartnerSummary{
 			ID:           partner.ID,

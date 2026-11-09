@@ -30,7 +30,7 @@ func (h *CatalogHandler) Search(c *gin.Context) {
 	query.Page = page
 	query.PerPage = perPage
 
-	result, err := h.services.Catalog.Search(query)
+	result, err := h.services.Catalog.Search(query, middleware.CurrentUser(c))
 	if err != nil {
 		httpx.Respond(c, err)
 		return

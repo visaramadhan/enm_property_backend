@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/sha512"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -104,6 +105,19 @@ func New(cfg config.Midtrans) *Client {
 
 // Simulated melaporkan apakah klien berjalan tanpa Midtrans sungguhan.
 func (c *Client) Simulated() bool { return c.simulate }
+
+// ErrorDetail mengambil kode status HTTP dan pesan dari respons Midtrans bila
+// err berasal dari Midtrans. ok bernilai false untuk error non-Midtrans.
+//
+// Dipakai agar penyebab kegagalan charge (mis. kanal QRIS belum aktif) dapat
+// diteruskan ke pengguna, bukan disamarkan menjadi 500 tanpa keterangan.
+func ErrorDetail(err error) (status int, message string, ok bool) {
+	var midtransErr *midtrans.Error
+	if errors.As(err, &midtransErr) {
+		return midtransErr.GetStatusCode(), midtransErr.GetMessage(), true
+	}
+	return 0, "", false
+}
 
 // CreateSnapToken membuat token Snap untuk satu order.
 func (c *Client) CreateSnapToken(_ context.Context, req Request) (*SnapResult, error) {

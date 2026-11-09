@@ -116,8 +116,17 @@ func New(deps Deps) *gin.Engine {
 	// Kategori properti untuk filter katalog publik.
 	api.GET("/categories", categoryHandler.List)
 
-	api.GET("/properties", catalogHandler.Search)
-	api.GET("/properties/:slug", catalogHandler.Detail)
+	// Katalog publik memakai autentikasi opsional: pengunjung anonim tetap
+	// dilayani, sedangkan pengunjung yang masuk mendapat penanda `is_favorite`
+	// pada setiap properti agar ikon favorit di kartu sesuai keadaan sebenarnya.
+	api.GET("/properties",
+		middleware.OptionalAuth(deps.Firebase, deps.Repos.Users),
+		catalogHandler.Search,
+	)
+	api.GET("/properties/:slug",
+		middleware.OptionalAuth(deps.Firebase, deps.Repos.Users),
+		catalogHandler.Detail,
+	)
 	// Form kontak publik pada halaman detail properti (lead kanal "form").
 	// Memakai autentikasi opsional: pengunjung anonim tetap dilayani, sedangkan
 	// pengunjung yang sudah login ikut tercatat pada lead.

@@ -51,6 +51,7 @@ func New(deps Deps) *gin.Engine {
 	meHandler := handler.NewMeHandler(svc)
 	planHandler := handler.NewPlanHandler(svc)
 	categoryHandler := handler.NewCategoryHandler(svc)
+	facilityHandler := handler.NewFacilityHandler(svc)
 	catalogHandler := handler.NewCatalogHandler(svc)
 	favoriteHandler := handler.NewFavoriteHandler(svc)
 	agreementHandler := handler.NewAgreementHandler(svc)
@@ -70,6 +71,7 @@ func New(deps Deps) *gin.Engine {
 	adminUserHandler := handler.NewAdminUserHandler(svc)
 	adminPlanHandler := handler.NewAdminPlanHandler(svc)
 	adminCategoryHandler := handler.NewAdminCategoryHandler(svc)
+	adminFacilityHandler := handler.NewAdminFacilityHandler(svc)
 	adminAgreementHandler := handler.NewAdminAgreementHandler(svc)
 	adminSettingHandler := handler.NewAdminSettingHandler(svc)
 	siteSettingHandler := handler.NewSiteSettingHandler(svc)
@@ -115,6 +117,9 @@ func New(deps Deps) *gin.Engine {
 
 	// Kategori properti untuk filter katalog publik.
 	api.GET("/categories", categoryHandler.List)
+
+	// Fasilitas properti untuk pilihan mitra saat mengunggah listing.
+	api.GET("/facilities", facilityHandler.List)
 
 	// Katalog publik memakai autentikasi opsional: pengunjung anonim tetap
 	// dilayani, sedangkan pengunjung yang masuk mendapat penanda `is_favorite`
@@ -245,6 +250,9 @@ func New(deps Deps) *gin.Engine {
 	// Master data kategori dapat dibaca admin, diubah khusus superadmin.
 	admin.GET("/categories", adminCategoryHandler.List)
 
+	// Master data fasilitas dapat dibaca admin, diubah khusus superadmin.
+	admin.GET("/facilities", adminFacilityHandler.List)
+
 	// Konten landing page: admin dan superadmin boleh mengubah lalu publikasi.
 	admin.GET("/landing", landingHandler.Get)
 	admin.PUT("/landing", landingHandler.Update)
@@ -296,6 +304,12 @@ func New(deps Deps) *gin.Engine {
 	super.PUT("/categories/:id", adminCategoryHandler.Update)
 	super.PATCH("/categories/:id/status", adminCategoryHandler.SetStatus)
 	super.DELETE("/categories/:id", adminCategoryHandler.Delete)
+
+	// Master data fasilitas properti.
+	super.POST("/facilities", adminFacilityHandler.Create)
+	super.PUT("/facilities/:id", adminFacilityHandler.Update)
+	super.PATCH("/facilities/:id/status", adminFacilityHandler.SetStatus)
+	super.DELETE("/facilities/:id", adminFacilityHandler.Delete)
 
 	super.GET("/agreements", adminAgreementHandler.List)
 	super.POST("/agreements", adminAgreementHandler.Create)

@@ -14,6 +14,7 @@ func NewPostgresRepositories(pool *pgxpool.Pool) Repositories {
 		Partners:      &postgresPartnerRepository{pool: pool},
 		Plans:         &postgresPlanRepository{pool: pool},
 		Categories:    &postgresCategoryRepository{pool: pool},
+		Facilities:    &postgresFacilityRepository{pool: pool},
 		Agreements:    &postgresAgreementRepository{pool: pool},
 		Subscriptions: &postgresSubscriptionRepository{pool: pool},
 		Orders:        &postgresOrderRepository{pool: pool},

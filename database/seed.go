@@ -47,6 +47,7 @@ func Seed(store *Store) {
 	seedUsers(store, today)
 	seedPlans(store, today)
 	seedCategories(store, today)
+	seedFacilities(store, today)
 	seedAgreement(store, today)
 	seedPartners(store, today)
 	seedSubscriptions(store, today)
@@ -147,6 +148,27 @@ func seedCategories(store *Store, today time.Time) {
 		category.CreatedAt = today.AddDate(0, -8, 0)
 		category.UpdatedAt = today
 		store.categories[category.ID] = copyCategory(category)
+	}
+}
+
+// seedFacilities mengisi fasilitas properti awal untuk pilihan mitra dan master data.
+func seedFacilities(store *Store, today time.Time) {
+	facilities := []*models.Facility{
+		{ID: "fac-carport", Slug: "carport", Name: "Carport", Description: "Tempat parkir kendaraan di dalam properti.", Icon: "car", SortOrder: 1, IsActive: true},
+		{ID: "fac-kolam-renang", Slug: "kolam-renang", Name: "Kolam Renang", Description: "Kolam renang pribadi atau bersama.", Icon: "waves", SortOrder: 2, IsActive: true},
+		{ID: "fac-taman", Slug: "taman", Name: "Taman", Description: "Area taman hijau di dalam properti.", Icon: "trees", SortOrder: 3, IsActive: true},
+		{ID: "fac-keamanan-24-jam", Slug: "keamanan-24-jam", Name: "Keamanan 24 Jam", Description: "Sistem keamanan yang beroperasi 24 jam.", Icon: "shield-check", SortOrder: 4, IsActive: true},
+		{ID: "fac-ac", Slug: "ac", Name: "AC", Description: "Pendingin ruangan (air conditioner).", Icon: "snowflake", SortOrder: 5, IsActive: true},
+		{ID: "fac-dapur", Slug: "dapur", Name: "Dapur", Description: "Dapur lengkap dengan peralatan masak.", Icon: "cooking-pot", SortOrder: 6, IsActive: true},
+		{ID: "fac-wifi", Slug: "wifi", Name: "Wi-Fi", Description: "Akses internet nirkabel.", Icon: "wifi", SortOrder: 7, IsActive: true},
+		{ID: "fac-listrik", Slug: "listrik", Name: "Listrik", Description: "Pasokan listrik tersedia.", Icon: "zap", SortOrder: 8, IsActive: true},
+		{ID: "fac-air", Slug: "air", Name: "Air", Description: "Pasokan air bersih tersedia.", Icon: "droplets", SortOrder: 9, IsActive: true},
+		{ID: "fac-furnished", Slug: "furnished", Name: "Furnished", Description: "Properti sudah dilengkapi furnitur.", Icon: "sofa", SortOrder: 10, IsActive: true},
+	}
+	for _, facility := range facilities {
+		facility.CreatedAt = today.AddDate(0, -8, 0)
+		facility.UpdatedAt = today
+		store.facilities[facility.ID] = copyFacility(facility)
 	}
 }
 

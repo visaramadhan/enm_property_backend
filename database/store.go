@@ -21,6 +21,7 @@ type Store struct {
 	partners      map[string]*models.Partner
 	plans         map[string]*models.Plan
 	categories    map[string]*models.Category
+	facilities    map[string]*models.Facility
 	agreements    map[string]*models.Agreement
 	acceptances   map[string]*models.AgreementAcceptance
 	subscriptions map[string]*models.Subscription
@@ -42,6 +43,7 @@ func NewStore() *Store {
 		partners:      make(map[string]*models.Partner),
 		plans:         make(map[string]*models.Plan),
 		categories:    make(map[string]*models.Category),
+		facilities:    make(map[string]*models.Facility),
 		agreements:    make(map[string]*models.Agreement),
 		acceptances:   make(map[string]*models.AgreementAcceptance),
 		subscriptions: make(map[string]*models.Subscription),
@@ -105,6 +107,14 @@ func copyPlan(in *models.Plan) *models.Plan {
 }
 
 func copyCategory(in *models.Category) *models.Category {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	return &out
+}
+
+func copyFacility(in *models.Facility) *models.Facility {
 	if in == nil {
 		return nil
 	}

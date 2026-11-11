@@ -42,6 +42,7 @@ type Services struct {
 	Partner      *PartnerService
 	Plan         *PlanService
 	Category     *CategoryService
+	Facility     *FacilityService
 	Agreement    *AgreementService
 	Subscription *SubscriptionService
 	Payment      *PaymentService
@@ -86,6 +87,7 @@ func NewServices(deps Deps) *Services {
 		Partner:      partner,
 		Plan:         &PlanService{deps: deps},
 		Category:     &CategoryService{deps: deps},
+		Facility:     &FacilityService{deps: deps},
 		Agreement:    agreement,
 		Subscription: subscription,
 		Payment:      payment,

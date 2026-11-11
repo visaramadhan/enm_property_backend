@@ -69,7 +69,7 @@ func (s *SubscriptionService) EnsureFree(partnerID string) *models.Subscription 
 		return existing
 	}
 
-	plan, err := s.deps.Repos.Plans.GetBySlug(database.SeedPlanFree)
+	plan, err := s.deps.Repos.Plans.GetBySlug(database.SeedPlanFreeSlug)
 	if err != nil || plan == nil {
 		return nil
 	}

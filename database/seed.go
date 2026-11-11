@@ -24,6 +24,9 @@ const (
 	SeedPlanStandar = "pln-standar"
 	SeedPlanPremium = "pln-premium"
 
+	// SeedPlanFreeSlug adalah slug paket Gratis (dipakai pencarian by slug).
+	SeedPlanFreeSlug = "gratis"
+
 	SeedCategoryRumah     = "cat-rumah"
 	SeedCategoryApartemen = "cat-apartemen"
 	SeedCategoryTanah     = "cat-tanah"

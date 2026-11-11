@@ -50,9 +50,16 @@ func (s *PaymentService) Checkout(ctx context.Context, user *models.User, req dt
 	now := timeNow()
 	kind := s.resolveKind(partner.ID, plan, now)
 
-	// Paket gratis langsung aktif tanpa pembayaran dan tanpa menyetujui
-	// perjanjian, sehingga mitra dapat segera memasang listing.
+	// Paket gratis langsung aktif tanpa pembayaran sehingga mitra dapat segera
+	// memasang listing. Bila mitra sudah menyetujui perjanjian pada dialog
+	// konfirmasi, persetujuannya tetap dicatat (best-effort) agar halaman
+	// "Perjanjian Kemitraan" menampilkan status disetujui; kegagalan
+	// pencatatan tidak menahan aktivasi paket Gratis.
 	if plan.IsFree {
+		if req.AgreeAgreement && s.settings.AgreementRequired() {
+			_, _ = s.agreements.Accept(user, partner, req.AgreementID, meta)
+		}
+
 		order := &models.Order{
 			ID:               newID(),
 			UserID:           user.ID,

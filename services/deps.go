@@ -62,8 +62,8 @@ func NewServices(deps Deps) *Services {
 	setting := &SettingService{deps: deps}
 	audit := &AuditService{deps: deps}
 	agreement := &AgreementService{deps: deps}
-	partner := &PartnerService{deps: deps, agreements: agreement}
 	subscription := &SubscriptionService{deps: deps, settings: setting}
+	partner := &PartnerService{deps: deps, agreements: agreement, subscriptions: subscription}
 	property := &PropertyService{deps: deps, subscriptions: subscription}
 	payment := &PaymentService{
 		deps:          deps,

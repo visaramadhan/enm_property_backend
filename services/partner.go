@@ -12,11 +12,14 @@ import (
 
 // PartnerService menangani registrasi dan pengelolaan profil kemitraan (BE-04).
 type PartnerService struct {
-	deps       Deps
-	agreements *AgreementService
+	deps          Deps
+	agreements    *AgreementService
+	subscriptions *SubscriptionService
 }
 
-// Register membuat profil kemitraan baru berstatus menunggu verifikasi.
+// Register membuat profil kemitraan baru yang langsung aktif tanpa verifikasi
+// admin. Paket Gratis otomatis diaktifkan agar mitra dapat segera memasang
+// listing.
 func (s *PartnerService) Register(ctx context.Context, user *models.User, req dto.RegisterPartnerRequest) (*models.Partner, error) {
 	if user == nil {
 		return nil, httpx.Unauthorized("Sesi pengguna tidak ditemukan")
@@ -29,7 +32,8 @@ func (s *PartnerService) Register(ctx context.Context, user *models.User, req dt
 	partner := &models.Partner{
 		ID:        newID(),
 		UserID:    user.ID,
-		Status:    models.PartnerStatusPending,
+		Status:    models.PartnerStatusActive,
+		JoinedAt:  &now,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -38,6 +42,7 @@ func (s *PartnerService) Register(ctx context.Context, user *models.User, req dt
 	if err := s.deps.Repos.Partners.Create(partner); err != nil {
 		return nil, httpx.Internal(err)
 	}
+	s.ensureFreePlan(partner.ID)
 	if err := s.promoteToMitra(ctx, user); err != nil {
 		return nil, err
 	}
@@ -64,7 +69,8 @@ func (s *PartnerService) Ensure(ctx context.Context, user *models.User, req dto.
 		partner = &models.Partner{
 			ID:        newID(),
 			UserID:    user.ID,
-			Status:    models.PartnerStatusPending,
+			Status:    models.PartnerStatusActive,
+			JoinedAt:  &now,
 			CreatedAt: now,
 			UpdatedAt: now,
 		}
@@ -72,6 +78,7 @@ func (s *PartnerService) Ensure(ctx context.Context, user *models.User, req dto.
 		if err := s.deps.Repos.Partners.Create(partner); err != nil {
 			return nil, httpx.Internal(err)
 		}
+		s.ensureFreePlan(partner.ID)
 	} else {
 		s.applyProfile(partner, req.BusinessName, req.PICName, req.Phone, req.Email, req.Address, req.City, req.Province)
 		partner.UpdatedAt = now
@@ -119,7 +126,8 @@ func (s *PartnerService) EnsureFromUser(ctx context.Context, user *models.User) 
 	partner = &models.Partner{
 		ID:        newID(),
 		UserID:    user.ID,
-		Status:    models.PartnerStatusPending,
+		Status:    models.PartnerStatusActive,
+		JoinedAt:  &now,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -128,6 +136,7 @@ func (s *PartnerService) EnsureFromUser(ctx context.Context, user *models.User) 
 	if err := s.deps.Repos.Partners.Create(partner); err != nil {
 		return nil, httpx.Internal(err)
 	}
+	s.ensureFreePlan(partner.ID)
 	if err := s.promoteToMitra(ctx, user); err != nil {
 		return nil, err
 	}
@@ -267,6 +276,14 @@ func (s *PartnerService) applyProfile(partner *models.Partner, businessName, pic
 	partner.Address = strings.TrimSpace(address)
 	partner.City = strings.TrimSpace(city)
 	partner.Province = strings.TrimSpace(province)
+}
+
+// ensureFreePlan mengaktifkan paket Gratis untuk mitra baru agar dapat langsung
+// memasang listing tanpa verifikasi admin maupun pembayaran.
+func (s *PartnerService) ensureFreePlan(partnerID string) {
+	if s.subscriptions != nil {
+		s.subscriptions.EnsureFree(partnerID)
+	}
 }
 
 // promoteToMitra memastikan pengguna berperan mitra beserta custom claim Firebase.

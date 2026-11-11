@@ -1,6 +1,7 @@
 package services
 
 import (
+	"strings"
 	"time"
 
 	"enmproperty/backend/database"
@@ -50,6 +51,41 @@ func (s *SubscriptionService) GetByPartner(partnerID string) (*models.Subscripti
 func (s *SubscriptionService) Active(partnerID string) *models.Subscription {
 	subscription, err := s.deps.Repos.Subscriptions.GetActiveByPartner(partnerID)
 	if err != nil {
+		return nil
+	}
+	return subscription
+}
+
+// EnsureFree memastikan mitra memiliki langganan aktif. Bila belum ada, paket
+// Gratis diaktifkan otomatis tanpa batas waktu sehingga mitra dapat langsung
+// memasang listing tanpa verifikasi admin maupun pembayaran. Dipanggil saat
+// mitra baru dibuat dan ketika langganan berbayar berakhir.
+func (s *SubscriptionService) EnsureFree(partnerID string) *models.Subscription {
+	if strings.TrimSpace(partnerID) == "" {
+		return nil
+	}
+	now := timeNow()
+	if existing, err := s.deps.Repos.Subscriptions.GetActiveByPartner(partnerID); err == nil && existing.IsActiveAt(now) {
+		return existing
+	}
+
+	plan, err := s.deps.Repos.Plans.GetBySlug(database.SeedPlanFree)
+	if err != nil || plan == nil {
+		return nil
+	}
+
+	subscription := &models.Subscription{
+		ID:        newID(),
+		PartnerID: partnerID,
+		PlanID:    plan.ID,
+		PlanName:  plan.Name,
+		StartsAt:  now,
+		EndsAt:    now.AddDate(100, 0, 0),
+		Status:    models.SubscriptionStatusActive,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := s.deps.Repos.Subscriptions.Create(subscription); err != nil {
 		return nil
 	}
 	return subscription
@@ -150,8 +186,9 @@ func (s *SubscriptionService) ExpireDue(now time.Time) (int, error) {
 			return expired, httpx.Internal(err)
 		}
 
-		s.expirePartner(subscription.PartnerID, now)
-		s.deps.Repos.Properties.UpdateStatusByPartner(subscription.PartnerID, models.PropertyStatusActive, models.PropertyStatusInactive)
+		// Langganan berbayar yang berakhir otomatis dikembalikan ke paket Gratis
+		// sehingga mitra tetap aktif dan listing yang sudah ada tidak hilang.
+		s.EnsureFree(subscription.PartnerID)
 		expired++
 	}
 	return expired, nil
@@ -232,20 +269,6 @@ func (s *SubscriptionService) boostUsage(partnerID string) int {
 		}
 	}
 	return count
-}
-
-// expirePartner menandai mitra menjadi kedaluwarsa bila sedang aktif.
-func (s *SubscriptionService) expirePartner(partnerID string, now time.Time) {
-	partner, err := s.deps.Repos.Partners.GetByID(partnerID)
-	if err != nil || partner == nil {
-		return
-	}
-	if partner.Status != models.PartnerStatusActive {
-		return
-	}
-	partner.Status = models.PartnerStatusExpired
-	partner.UpdatedAt = now
-	_ = s.deps.Repos.Partners.Update(partner)
 }
 
 // remainingQuota menghitung sisa kuota listing, atau -1 bila tanpa batas.

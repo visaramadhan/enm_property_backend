@@ -47,6 +47,41 @@ func (s *PaymentService) Checkout(ctx context.Context, user *models.User, req dt
 		return dto.CheckoutResponse{}, err
 	}
 
+	now := timeNow()
+	kind := s.resolveKind(partner.ID, plan, now)
+
+	// Paket gratis langsung aktif tanpa pembayaran dan tanpa menyetujui
+	// perjanjian, sehingga mitra dapat segera memasang listing.
+	if plan.IsFree {
+		order := &models.Order{
+			ID:               newID(),
+			UserID:           user.ID,
+			PartnerID:        partner.ID,
+			PartnerName:      partner.BusinessName,
+			PlanID:           plan.ID,
+			PlanName:         plan.Name,
+			PlanPrice:        plan.Price,
+			PlanDurationDays: plan.DurationDays,
+			PlanListingQuota: plan.ListingQuota,
+			Amount:           plan.Price,
+			Kind:             kind,
+			Status:           models.OrderStatusPaid,
+			Provider:         models.PaymentProviderFree,
+			PaidAt:           &now,
+			ExpiresAt:        now.Add(time.Duration(s.orderExpiryMinutes()) * time.Minute),
+			CreatedAt:        now,
+			UpdatedAt:        now,
+		}
+		if err := s.createOrder(order); err != nil {
+			return dto.CheckoutResponse{}, err
+		}
+		s.fulfill(ctx, order)
+		return dto.CheckoutResponse{
+			Order:      dto.NewOrderView(order),
+			FreeActive: true,
+		}, nil
+	}
+
 	if s.settings.AgreementRequired() {
 		if !req.AgreeAgreement {
 			return dto.CheckoutResponse{}, httpx.Unprocessable("Anda harus menyetujui perjanjian kemitraan terlebih dahulu")
@@ -55,9 +90,6 @@ func (s *PaymentService) Checkout(ctx context.Context, user *models.User, req dt
 			return dto.CheckoutResponse{}, err
 		}
 	}
-
-	now := timeNow()
-	kind := s.resolveKind(partner.ID, plan, now)
 
 	order := &models.Order{
 		ID:               newID(),
@@ -76,21 +108,6 @@ func (s *PaymentService) Checkout(ctx context.Context, user *models.User, req dt
 		ExpiresAt:        now.Add(time.Duration(s.orderExpiryMinutes()) * time.Minute),
 		CreatedAt:        now,
 		UpdatedAt:        now,
-	}
-
-	// Paket gratis langsung aktif tanpa pembayaran.
-	if plan.IsFree {
-		order.Provider = models.PaymentProviderFree
-		order.Status = models.OrderStatusPaid
-		order.PaidAt = &now
-		if err := s.createOrder(order); err != nil {
-			return dto.CheckoutResponse{}, err
-		}
-		s.fulfill(ctx, order)
-		return dto.CheckoutResponse{
-			Order:      dto.NewOrderView(order),
-			FreeActive: true,
-		}, nil
 	}
 
 	if err := s.createOrder(order); err != nil {

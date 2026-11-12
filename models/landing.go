@@ -7,10 +7,13 @@ import "time"
 // Konten disimpan sebagai pasangan kunci-nilai pada tabel tersendiri agar tidak
 // tercampur dengan pengaturan sistem (BE-14) yang dipakai lintas modul.
 const (
-	LandingHeroTitle       = "hero_title"
-	LandingHeroSubtitle    = "hero_subtitle"
-	LandingHeroCTAText     = "hero_cta_text"
-	LandingHeroImageURL    = "hero_image_url"
+	LandingHeroTitle    = "hero_title"
+	LandingHeroSubtitle = "hero_subtitle"
+	LandingHeroCTAText  = "hero_cta_text"
+	LandingHeroImageURL = "hero_image_url"
+	// Daftar URL gambar kolase hero (JSON, maksimal 4). Bila kosong, halaman
+	// memakai hero_image_url lalu dilengkapi foto properti teratas.
+	LandingHeroImages      = "hero_images"
 	LandingMetaTitle       = "meta_title"
 	LandingMetaDescription = "meta_description"
 	LandingMetaOGImage     = "meta_og_image"
@@ -30,6 +33,9 @@ const (
 	LandingPanduanSubtitle    = "panduan_subtitle"
 	LandingFAQTitle           = "faq_title"
 	LandingFAQSubtitle        = "faq_subtitle"
+	// Daftar pertanyaan umum yang dapat diedit admin (JSON [{tanya,jawab}]).
+	// Bila kosong, halaman memakai teks bawaan komponen.
+	LandingFAQItems = "faq_items"
 
 	// Varian bahasa Inggris (English). Hanya berlaku untuk halaman landing
 	// versi /en. Nilai kosong berarti tampilan Inggris memakai teks bawaan
@@ -52,6 +58,8 @@ const (
 	LandingPanduanSubtitleEN    = "panduan_subtitle_en"
 	LandingFAQTitleEN           = "faq_title_en"
 	LandingFAQSubtitleEN        = "faq_subtitle_en"
+	// Varian Inggris daftar pertanyaan umum (JSON [{tanya,jawab}]).
+	LandingFAQItemsEN = "faq_items_en"
 )
 
 // LandingContent adalah satu pasangan kunci-nilai konten landing page.

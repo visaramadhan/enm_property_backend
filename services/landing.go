@@ -43,10 +43,11 @@ func (s *LandingService) Update(actorID string, req dto.UpdateLandingRequest) (d
 		models.LandingHeroSubtitle:    strings.TrimSpace(req.HeroSubtitle),
 		models.LandingHeroCTAText:     strings.TrimSpace(req.HeroCTAText),
 		models.LandingHeroImageURL:    strings.TrimSpace(req.HeroImageURL),
+		models.LandingHeroImages:      dto.EncodeStringList(cleanTeks(req.HeroImages)),
 		models.LandingMetaTitle:       strings.TrimSpace(req.MetaTitle),
 		models.LandingMetaDescription: strings.TrimSpace(req.MetaDescription),
 		models.LandingMetaOGImage:     strings.TrimSpace(req.MetaOGImage),
-		models.LandingHighlightAreas:  dto.EncodeStringList(cleanAreas(req.HighlightAreas)),
+		models.LandingHighlightAreas:  dto.EncodeStringList(cleanTeks(req.HighlightAreas)),
 		models.LandingCTATitle:        strings.TrimSpace(req.CTATitle),
 		models.LandingCTADescription:  strings.TrimSpace(req.CTADescription),
 
@@ -60,6 +61,7 @@ func (s *LandingService) Update(actorID string, req dto.UpdateLandingRequest) (d
 		models.LandingPanduanSubtitle:    strings.TrimSpace(req.PanduanSubtitle),
 		models.LandingFAQTitle:           strings.TrimSpace(req.FAQTitle),
 		models.LandingFAQSubtitle:        strings.TrimSpace(req.FAQSubtitle),
+		models.LandingFAQItems:           dto.EncodeFAQItems(cleanFAQ(req.FAQItems)),
 
 		models.LandingHeroTitleEN:       strings.TrimSpace(req.HeroTitleEN),
 		models.LandingHeroSubtitleEN:    strings.TrimSpace(req.HeroSubtitleEN),
@@ -79,6 +81,7 @@ func (s *LandingService) Update(actorID string, req dto.UpdateLandingRequest) (d
 		models.LandingPanduanSubtitleEN:    strings.TrimSpace(req.PanduanSubtitleEN),
 		models.LandingFAQTitleEN:           strings.TrimSpace(req.FAQTitleEN),
 		models.LandingFAQSubtitleEN:        strings.TrimSpace(req.FAQSubtitleEN),
+		models.LandingFAQItemsEN:           dto.EncodeFAQItems(cleanFAQ(req.FAQItemsEN)),
 	}
 
 	for key, value := range values {
@@ -131,12 +134,12 @@ func (s *LandingService) refresh() dto.LandingContentView {
 	return view
 }
 
-// cleanAreas membuang area kosong dan duplikat tanpa mengubah urutan.
-func cleanAreas(areas []string) []string {
-	hasil := make([]string, 0, len(areas))
-	terlihat := make(map[string]struct{}, len(areas))
-	for _, area := range areas {
-		bersih := strings.TrimSpace(area)
+// cleanTeks membuang teks kosong dan duplikat tanpa mengubah urutan.
+func cleanTeks(items []string) []string {
+	hasil := make([]string, 0, len(items))
+	terlihat := make(map[string]struct{}, len(items))
+	for _, item := range items {
+		bersih := strings.TrimSpace(item)
 		if bersih == "" {
 			continue
 		}
@@ -145,6 +148,21 @@ func cleanAreas(areas []string) []string {
 		}
 		terlihat[bersih] = struct{}{}
 		hasil = append(hasil, bersih)
+	}
+	return hasil
+}
+
+// cleanFAQ membuang pasangan pertanyaan-jawaban yang tidak lengkap (salah satu
+// sisi kosong) tanpa mengubah urutan.
+func cleanFAQ(items []dto.LandingFAQItem) []dto.LandingFAQItem {
+	hasil := make([]dto.LandingFAQItem, 0, len(items))
+	for _, item := range items {
+		tanya := strings.TrimSpace(item.Tanya)
+		jawab := strings.TrimSpace(item.Jawab)
+		if tanya == "" || jawab == "" {
+			continue
+		}
+		hasil = append(hasil, dto.LandingFAQItem{Tanya: tanya, Jawab: jawab})
 	}
 	return hasil
 }

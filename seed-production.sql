@@ -121,6 +121,7 @@ VALUES
   ('hero_subtitle', 'Platform listing properti terpercaya untuk sewa dan jual.', 'system', now()),
   ('hero_cta_text', 'Sewa & Beli Properti', 'system', now()),
   ('hero_image_url', '', 'system', now()),
+  ('hero_images', '[]', 'system', now()),
   ('meta_title', 'ENM Property - Sewa & Jual Properti Terbaik di Bali', 'system', now()),
   ('meta_description', 'Temukan properti impian untuk disewa atau dibeli. Daftar mitra untuk memasarkan properti Anda.', 'system', now()),
   ('meta_og_image', '', 'system', now()),
@@ -136,7 +137,9 @@ VALUES
   ('panduan_title', 'Panduan Menjadi Mitra', 'system', now()),
   ('panduan_subtitle', '', 'system', now()),
   ('faq_title', 'Pertanyaan Umum', 'system', now()),
-  ('faq_subtitle', '', 'system', now())
+  ('faq_subtitle', '', 'system', now()),
+  ('faq_items', '[]', 'system', now()),
+  ('faq_items_en', '[]', 'system', now())
 ON CONFLICT (key) DO UPDATE
   SET value = EXCLUDED.value,
       updated_at = now();

@@ -15,6 +15,7 @@ type LandingContentView struct {
 	HeroSubtitle    string   `json:"hero_subtitle"`
 	HeroCTAText     string   `json:"hero_cta_text"`
 	HeroImageURL    string   `json:"hero_image_url"`
+	HeroImages      []string `json:"hero_images"`
 	MetaTitle       string   `json:"meta_title"`
 	MetaDescription string   `json:"meta_description"`
 	MetaOGImage     string   `json:"meta_og_image"`
@@ -22,16 +23,17 @@ type LandingContentView struct {
 	CTATitle        string   `json:"cta_title"`
 	CTADescription  string   `json:"cta_description"`
 
-	KeunggulanTitle    string `json:"keunggulan_title"`
-	KeunggulanSubtitle string `json:"keunggulan_subtitle"`
-	PropertiTitle      string `json:"properti_title"`
-	PropertiSubtitle   string `json:"properti_subtitle"`
-	PaketTitle         string `json:"paket_title"`
-	PaketSubtitle      string `json:"paket_subtitle"`
-	PanduanTitle       string `json:"panduan_title"`
-	PanduanSubtitle    string `json:"panduan_subtitle"`
-	FAQTitle           string `json:"faq_title"`
-	FAQSubtitle        string `json:"faq_subtitle"`
+	KeunggulanTitle    string           `json:"keunggulan_title"`
+	KeunggulanSubtitle string           `json:"keunggulan_subtitle"`
+	PropertiTitle      string           `json:"properti_title"`
+	PropertiSubtitle   string           `json:"properti_subtitle"`
+	PaketTitle         string           `json:"paket_title"`
+	PaketSubtitle      string           `json:"paket_subtitle"`
+	PanduanTitle       string           `json:"panduan_title"`
+	PanduanSubtitle    string           `json:"panduan_subtitle"`
+	FAQTitle           string           `json:"faq_title"`
+	FAQSubtitle        string           `json:"faq_subtitle"`
+	FAQItems           []LandingFAQItem `json:"faq_items"`
 
 	// Varian bahasa Inggris (khusus halaman landing /en). Nilai kosong berarti
 	// tampilan Inggris memakai teks bawaan komponen.
@@ -43,18 +45,27 @@ type LandingContentView struct {
 	CTATitleEN        string `json:"cta_title_en"`
 	CTADescriptionEN  string `json:"cta_description_en"`
 
-	KeunggulanTitleEN    string `json:"keunggulan_title_en"`
-	KeunggulanSubtitleEN string `json:"keunggulan_subtitle_en"`
-	PropertiTitleEN      string `json:"properti_title_en"`
-	PropertiSubtitleEN   string `json:"properti_subtitle_en"`
-	PaketTitleEN         string `json:"paket_title_en"`
-	PaketSubtitleEN      string `json:"paket_subtitle_en"`
-	PanduanTitleEN       string `json:"panduan_title_en"`
-	PanduanSubtitleEN    string `json:"panduan_subtitle_en"`
-	FAQTitleEN           string `json:"faq_title_en"`
-	FAQSubtitleEN        string `json:"faq_subtitle_en"`
+	KeunggulanTitleEN    string           `json:"keunggulan_title_en"`
+	KeunggulanSubtitleEN string           `json:"keunggulan_subtitle_en"`
+	PropertiTitleEN      string           `json:"properti_title_en"`
+	PropertiSubtitleEN   string           `json:"properti_subtitle_en"`
+	PaketTitleEN         string           `json:"paket_title_en"`
+	PaketSubtitleEN      string           `json:"paket_subtitle_en"`
+	PanduanTitleEN       string           `json:"panduan_title_en"`
+	PanduanSubtitleEN    string           `json:"panduan_subtitle_en"`
+	FAQTitleEN           string           `json:"faq_title_en"`
+	FAQSubtitleEN        string           `json:"faq_subtitle_en"`
+	FAQItemsEN           []LandingFAQItem `json:"faq_items_en"`
 
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// LandingFAQItem adalah satu pasangan pertanyaan-jawaban pada bagian FAQ
+// landing page. Daftarnya disimpan sebagai JSON di kolom kunci-nilai sehingga
+// urutan dan pasangannya tetap terjaga.
+type LandingFAQItem struct {
+	Tanya string `json:"tanya" validate:"required,max=200"`
+	Jawab string `json:"jawab" validate:"required,max=1000"`
 }
 
 // UpdateLandingRequest adalah body PUT /admin/landing.
@@ -67,6 +78,7 @@ type UpdateLandingRequest struct {
 	HeroSubtitle    string   `json:"hero_subtitle" validate:"max=150"`
 	HeroCTAText     string   `json:"hero_cta_text" validate:"max=40"`
 	HeroImageURL    string   `json:"hero_image_url" validate:"max=500"`
+	HeroImages      []string `json:"hero_images" validate:"max=4,dive,max=500"`
 	MetaTitle       string   `json:"meta_title" validate:"required,min=50,max=60"`
 	MetaDescription string   `json:"meta_description" validate:"required,min=120,max=160"`
 	MetaOGImage     string   `json:"meta_og_image" validate:"max=500"`
@@ -74,16 +86,17 @@ type UpdateLandingRequest struct {
 	CTATitle        string   `json:"cta_title" validate:"max=70"`
 	CTADescription  string   `json:"cta_description" validate:"max=200"`
 
-	KeunggulanTitle    string `json:"keunggulan_title" validate:"max=70"`
-	KeunggulanSubtitle string `json:"keunggulan_subtitle" validate:"max=200"`
-	PropertiTitle      string `json:"properti_title" validate:"max=70"`
-	PropertiSubtitle   string `json:"properti_subtitle" validate:"max=200"`
-	PaketTitle         string `json:"paket_title" validate:"max=70"`
-	PaketSubtitle      string `json:"paket_subtitle" validate:"max=200"`
-	PanduanTitle       string `json:"panduan_title" validate:"max=70"`
-	PanduanSubtitle    string `json:"panduan_subtitle" validate:"max=200"`
-	FAQTitle           string `json:"faq_title" validate:"max=70"`
-	FAQSubtitle        string `json:"faq_subtitle" validate:"max=200"`
+	KeunggulanTitle    string           `json:"keunggulan_title" validate:"max=70"`
+	KeunggulanSubtitle string           `json:"keunggulan_subtitle" validate:"max=200"`
+	PropertiTitle      string           `json:"properti_title" validate:"max=70"`
+	PropertiSubtitle   string           `json:"properti_subtitle" validate:"max=200"`
+	PaketTitle         string           `json:"paket_title" validate:"max=70"`
+	PaketSubtitle      string           `json:"paket_subtitle" validate:"max=200"`
+	PanduanTitle       string           `json:"panduan_title" validate:"max=70"`
+	PanduanSubtitle    string           `json:"panduan_subtitle" validate:"max=200"`
+	FAQTitle           string           `json:"faq_title" validate:"max=70"`
+	FAQSubtitle        string           `json:"faq_subtitle" validate:"max=200"`
+	FAQItems           []LandingFAQItem `json:"faq_items" validate:"max=12,dive"`
 
 	// Varian bahasa Inggris bersifat opsional (tanpa `required`) agar admin
 	// tetap dapat menyimpan walau terjemahan belum lengkap.
@@ -95,16 +108,17 @@ type UpdateLandingRequest struct {
 	CTATitleEN        string `json:"cta_title_en" validate:"max=70"`
 	CTADescriptionEN  string `json:"cta_description_en" validate:"max=200"`
 
-	KeunggulanTitleEN    string `json:"keunggulan_title_en" validate:"max=70"`
-	KeunggulanSubtitleEN string `json:"keunggulan_subtitle_en" validate:"max=200"`
-	PropertiTitleEN      string `json:"properti_title_en" validate:"max=70"`
-	PropertiSubtitleEN   string `json:"properti_subtitle_en" validate:"max=200"`
-	PaketTitleEN         string `json:"paket_title_en" validate:"max=70"`
-	PaketSubtitleEN      string `json:"paket_subtitle_en" validate:"max=200"`
-	PanduanTitleEN       string `json:"panduan_title_en" validate:"max=70"`
-	PanduanSubtitleEN    string `json:"panduan_subtitle_en" validate:"max=200"`
-	FAQTitleEN           string `json:"faq_title_en" validate:"max=70"`
-	FAQSubtitleEN        string `json:"faq_subtitle_en" validate:"max=200"`
+	KeunggulanTitleEN    string           `json:"keunggulan_title_en" validate:"max=70"`
+	KeunggulanSubtitleEN string           `json:"keunggulan_subtitle_en" validate:"max=200"`
+	PropertiTitleEN      string           `json:"properti_title_en" validate:"max=70"`
+	PropertiSubtitleEN   string           `json:"properti_subtitle_en" validate:"max=200"`
+	PaketTitleEN         string           `json:"paket_title_en" validate:"max=70"`
+	PaketSubtitleEN      string           `json:"paket_subtitle_en" validate:"max=200"`
+	PanduanTitleEN       string           `json:"panduan_title_en" validate:"max=70"`
+	PanduanSubtitleEN    string           `json:"panduan_subtitle_en" validate:"max=200"`
+	FAQTitleEN           string           `json:"faq_title_en" validate:"max=70"`
+	FAQSubtitleEN        string           `json:"faq_subtitle_en" validate:"max=200"`
+	FAQItemsEN           []LandingFAQItem `json:"faq_items_en" validate:"max=12,dive"`
 }
 
 // LandingImageParam adalah parameter path jenis gambar landing yang diunggah.
@@ -148,6 +162,7 @@ func NewLandingContentView(items []*models.LandingContent) LandingContentView {
 		HeroSubtitle:    values[models.LandingHeroSubtitle],
 		HeroCTAText:     values[models.LandingHeroCTAText],
 		HeroImageURL:    values[models.LandingHeroImageURL],
+		HeroImages:      DecodeStringList(values[models.LandingHeroImages]),
 		MetaTitle:       values[models.LandingMetaTitle],
 		MetaDescription: values[models.LandingMetaDescription],
 		MetaOGImage:     values[models.LandingMetaOGImage],
@@ -165,6 +180,7 @@ func NewLandingContentView(items []*models.LandingContent) LandingContentView {
 		PanduanSubtitle:    values[models.LandingPanduanSubtitle],
 		FAQTitle:           values[models.LandingFAQTitle],
 		FAQSubtitle:        values[models.LandingFAQSubtitle],
+		FAQItems:           DecodeFAQItems(values[models.LandingFAQItems]),
 
 		HeroTitleEN:       values[models.LandingHeroTitleEN],
 		HeroSubtitleEN:    values[models.LandingHeroSubtitleEN],
@@ -184,6 +200,7 @@ func NewLandingContentView(items []*models.LandingContent) LandingContentView {
 		PanduanSubtitleEN:    values[models.LandingPanduanSubtitleEN],
 		FAQTitleEN:           values[models.LandingFAQTitleEN],
 		FAQSubtitleEN:        values[models.LandingFAQSubtitleEN],
+		FAQItemsEN:           DecodeFAQItems(values[models.LandingFAQItemsEN]),
 
 		UpdatedAt: updatedAt,
 	}
@@ -212,6 +229,34 @@ func DecodeStringList(raw string) []string {
 	items := []string{}
 	if err := json.Unmarshal([]byte(trimmed), &items); err != nil {
 		return []string{}
+	}
+	return items
+}
+
+// EncodeFAQItems menyimpan daftar pertanyaan-jawaban sebagai JSON agar urutan
+// dan pasangannya tetap terjaga di kolom kunci-nilai.
+func EncodeFAQItems(items []LandingFAQItem) string {
+	if len(items) == 0 {
+		return "[]"
+	}
+	encoded, err := json.Marshal(items)
+	if err != nil {
+		return "[]"
+	}
+	return string(encoded)
+}
+
+// DecodeFAQItems membaca daftar pertanyaan-jawaban dari nilai JSON. Nilai yang
+// tidak valid atau kosong menghasilkan daftar kosong agar bagian FAQ memakai
+// teks bawaan komponen alih-alih gagal dirender.
+func DecodeFAQItems(raw string) []LandingFAQItem {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return []LandingFAQItem{}
+	}
+	items := []LandingFAQItem{}
+	if err := json.Unmarshal([]byte(trimmed), &items); err != nil {
+		return []LandingFAQItem{}
 	}
 	return items
 }

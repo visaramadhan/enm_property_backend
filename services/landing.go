@@ -42,11 +42,11 @@ func (s *LandingService) Update(actorID string, req dto.UpdateLandingRequest) (d
 		models.LandingHeroTitle:       strings.TrimSpace(req.HeroTitle),
 		models.LandingHeroSubtitle:    strings.TrimSpace(req.HeroSubtitle),
 		models.LandingHeroCTAText:     strings.TrimSpace(req.HeroCTAText),
-		models.LandingHeroImageURL:    strings.TrimSpace(req.HeroImageURL),
-		models.LandingHeroImages:      dto.EncodeStringList(cleanTeks(req.HeroImages)),
+		models.LandingHeroImageURL:    cleanURL(req.HeroImageURL),
+		models.LandingHeroImages:      dto.EncodeStringList(cleanURLs(req.HeroImages)),
 		models.LandingMetaTitle:       strings.TrimSpace(req.MetaTitle),
 		models.LandingMetaDescription: strings.TrimSpace(req.MetaDescription),
-		models.LandingMetaOGImage:     strings.TrimSpace(req.MetaOGImage),
+		models.LandingMetaOGImage:     cleanURL(req.MetaOGImage),
 		models.LandingHighlightAreas:  dto.EncodeStringList(cleanTeks(req.HighlightAreas)),
 		models.LandingCTATitle:        strings.TrimSpace(req.CTATitle),
 		models.LandingCTADescription:  strings.TrimSpace(req.CTADescription),
@@ -132,6 +132,41 @@ func (s *LandingService) refresh() dto.LandingContentView {
 	view := dto.NewLandingContentView(s.deps.Repos.Landings.All())
 	s.storeCache(&view)
 	return view
+}
+
+// cleanURL membuang pembungkus yang kerap ikut tersalin saat menempel URL
+// (backtick atau kutip) beserta spasi di ujungnya. Tanpa pembersihan ini,
+// `https://situs/gambar.jpg` tersimpan apa adanya dan gagal dimuat di halaman.
+func cleanURL(nilai string) string {
+	bersih := strings.Trim(strings.TrimSpace(nilai), "`")
+	bersih = strings.TrimSpace(bersih)
+	if len(bersih) >= 2 {
+		kutipPertama := bersih[0]
+		kutipTerakhir := bersih[len(bersih)-1]
+		if (kutipPertama == '"' && kutipTerakhir == '"') || (kutipPertama == '\'' && kutipTerakhir == '\'') {
+			bersih = strings.TrimSpace(bersih[1 : len(bersih)-1])
+		}
+	}
+	return bersih
+}
+
+// cleanURLs membersihkan setiap URL lalu membuang yang kosong dan duplikat
+// tanpa mengubah urutan.
+func cleanURLs(items []string) []string {
+	hasil := make([]string, 0, len(items))
+	terlihat := make(map[string]struct{}, len(items))
+	for _, item := range items {
+		bersih := cleanURL(item)
+		if bersih == "" {
+			continue
+		}
+		if _, ada := terlihat[bersih]; ada {
+			continue
+		}
+		terlihat[bersih] = struct{}{}
+		hasil = append(hasil, bersih)
+	}
+	return hasil
 }
 
 // cleanTeks membuang teks kosong dan duplikat tanpa mengubah urutan.

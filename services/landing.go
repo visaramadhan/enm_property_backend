@@ -60,6 +60,25 @@ func (s *LandingService) Update(actorID string, req dto.UpdateLandingRequest) (d
 		models.LandingPanduanSubtitle:    strings.TrimSpace(req.PanduanSubtitle),
 		models.LandingFAQTitle:           strings.TrimSpace(req.FAQTitle),
 		models.LandingFAQSubtitle:        strings.TrimSpace(req.FAQSubtitle),
+
+		models.LandingHeroTitleEN:       strings.TrimSpace(req.HeroTitleEN),
+		models.LandingHeroSubtitleEN:    strings.TrimSpace(req.HeroSubtitleEN),
+		models.LandingHeroCTATextEN:     strings.TrimSpace(req.HeroCTATextEN),
+		models.LandingMetaTitleEN:       strings.TrimSpace(req.MetaTitleEN),
+		models.LandingMetaDescriptionEN: strings.TrimSpace(req.MetaDescriptionEN),
+		models.LandingCTATitleEN:        strings.TrimSpace(req.CTATitleEN),
+		models.LandingCTADescriptionEN:  strings.TrimSpace(req.CTADescriptionEN),
+
+		models.LandingKeunggulanTitleEN:    strings.TrimSpace(req.KeunggulanTitleEN),
+		models.LandingKeunggulanSubtitleEN: strings.TrimSpace(req.KeunggulanSubtitleEN),
+		models.LandingPropertiTitleEN:      strings.TrimSpace(req.PropertiTitleEN),
+		models.LandingPropertiSubtitleEN:   strings.TrimSpace(req.PropertiSubtitleEN),
+		models.LandingPaketTitleEN:         strings.TrimSpace(req.PaketTitleEN),
+		models.LandingPaketSubtitleEN:      strings.TrimSpace(req.PaketSubtitleEN),
+		models.LandingPanduanTitleEN:       strings.TrimSpace(req.PanduanTitleEN),
+		models.LandingPanduanSubtitleEN:    strings.TrimSpace(req.PanduanSubtitleEN),
+		models.LandingFAQTitleEN:           strings.TrimSpace(req.FAQTitleEN),
+		models.LandingFAQSubtitleEN:        strings.TrimSpace(req.FAQSubtitleEN),
 	}
 
 	for key, value := range values {

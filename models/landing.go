@@ -30,6 +30,28 @@ const (
 	LandingPanduanSubtitle    = "panduan_subtitle"
 	LandingFAQTitle           = "faq_title"
 	LandingFAQSubtitle        = "faq_subtitle"
+
+	// Varian bahasa Inggris (English). Hanya berlaku untuk halaman landing
+	// versi /en. Nilai kosong berarti tampilan Inggris memakai teks bawaan
+	// yang tertanam di komponen, sehingga halaman tidak pernah kosong.
+	LandingHeroTitleEN       = "hero_title_en"
+	LandingHeroSubtitleEN    = "hero_subtitle_en"
+	LandingHeroCTATextEN     = "hero_cta_text_en"
+	LandingMetaTitleEN       = "meta_title_en"
+	LandingMetaDescriptionEN = "meta_description_en"
+	LandingCTATitleEN        = "cta_title_en"
+	LandingCTADescriptionEN  = "cta_description_en"
+
+	LandingKeunggulanTitleEN    = "keunggulan_title_en"
+	LandingKeunggulanSubtitleEN = "keunggulan_subtitle_en"
+	LandingPropertiTitleEN      = "properti_title_en"
+	LandingPropertiSubtitleEN   = "properti_subtitle_en"
+	LandingPaketTitleEN         = "paket_title_en"
+	LandingPaketSubtitleEN      = "paket_subtitle_en"
+	LandingPanduanTitleEN       = "panduan_title_en"
+	LandingPanduanSubtitleEN    = "panduan_subtitle_en"
+	LandingFAQTitleEN           = "faq_title_en"
+	LandingFAQSubtitleEN        = "faq_subtitle_en"
 )
 
 // LandingContent adalah satu pasangan kunci-nilai konten landing page.

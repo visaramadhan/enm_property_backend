@@ -33,6 +33,27 @@ type LandingContentView struct {
 	FAQTitle           string `json:"faq_title"`
 	FAQSubtitle        string `json:"faq_subtitle"`
 
+	// Varian bahasa Inggris (khusus halaman landing /en). Nilai kosong berarti
+	// tampilan Inggris memakai teks bawaan komponen.
+	HeroTitleEN       string `json:"hero_title_en"`
+	HeroSubtitleEN    string `json:"hero_subtitle_en"`
+	HeroCTATextEN     string `json:"hero_cta_text_en"`
+	MetaTitleEN       string `json:"meta_title_en"`
+	MetaDescriptionEN string `json:"meta_description_en"`
+	CTATitleEN        string `json:"cta_title_en"`
+	CTADescriptionEN  string `json:"cta_description_en"`
+
+	KeunggulanTitleEN    string `json:"keunggulan_title_en"`
+	KeunggulanSubtitleEN string `json:"keunggulan_subtitle_en"`
+	PropertiTitleEN      string `json:"properti_title_en"`
+	PropertiSubtitleEN   string `json:"properti_subtitle_en"`
+	PaketTitleEN         string `json:"paket_title_en"`
+	PaketSubtitleEN      string `json:"paket_subtitle_en"`
+	PanduanTitleEN       string `json:"panduan_title_en"`
+	PanduanSubtitleEN    string `json:"panduan_subtitle_en"`
+	FAQTitleEN           string `json:"faq_title_en"`
+	FAQSubtitleEN        string `json:"faq_subtitle_en"`
+
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
@@ -63,6 +84,27 @@ type UpdateLandingRequest struct {
 	PanduanSubtitle    string `json:"panduan_subtitle" validate:"max=200"`
 	FAQTitle           string `json:"faq_title" validate:"max=70"`
 	FAQSubtitle        string `json:"faq_subtitle" validate:"max=200"`
+
+	// Varian bahasa Inggris bersifat opsional (tanpa `required`) agar admin
+	// tetap dapat menyimpan walau terjemahan belum lengkap.
+	HeroTitleEN       string `json:"hero_title_en" validate:"max=70"`
+	HeroSubtitleEN    string `json:"hero_subtitle_en" validate:"max=150"`
+	HeroCTATextEN     string `json:"hero_cta_text_en" validate:"max=40"`
+	MetaTitleEN       string `json:"meta_title_en" validate:"max=60"`
+	MetaDescriptionEN string `json:"meta_description_en" validate:"max=160"`
+	CTATitleEN        string `json:"cta_title_en" validate:"max=70"`
+	CTADescriptionEN  string `json:"cta_description_en" validate:"max=200"`
+
+	KeunggulanTitleEN    string `json:"keunggulan_title_en" validate:"max=70"`
+	KeunggulanSubtitleEN string `json:"keunggulan_subtitle_en" validate:"max=200"`
+	PropertiTitleEN      string `json:"properti_title_en" validate:"max=70"`
+	PropertiSubtitleEN   string `json:"properti_subtitle_en" validate:"max=200"`
+	PaketTitleEN         string `json:"paket_title_en" validate:"max=70"`
+	PaketSubtitleEN      string `json:"paket_subtitle_en" validate:"max=200"`
+	PanduanTitleEN       string `json:"panduan_title_en" validate:"max=70"`
+	PanduanSubtitleEN    string `json:"panduan_subtitle_en" validate:"max=200"`
+	FAQTitleEN           string `json:"faq_title_en" validate:"max=70"`
+	FAQSubtitleEN        string `json:"faq_subtitle_en" validate:"max=200"`
 }
 
 // LandingImageParam adalah parameter path jenis gambar landing yang diunggah.
@@ -123,6 +165,25 @@ func NewLandingContentView(items []*models.LandingContent) LandingContentView {
 		PanduanSubtitle:    values[models.LandingPanduanSubtitle],
 		FAQTitle:           values[models.LandingFAQTitle],
 		FAQSubtitle:        values[models.LandingFAQSubtitle],
+
+		HeroTitleEN:       values[models.LandingHeroTitleEN],
+		HeroSubtitleEN:    values[models.LandingHeroSubtitleEN],
+		HeroCTATextEN:     values[models.LandingHeroCTATextEN],
+		MetaTitleEN:       values[models.LandingMetaTitleEN],
+		MetaDescriptionEN: values[models.LandingMetaDescriptionEN],
+		CTATitleEN:        values[models.LandingCTATitleEN],
+		CTADescriptionEN:  values[models.LandingCTADescriptionEN],
+
+		KeunggulanTitleEN:    values[models.LandingKeunggulanTitleEN],
+		KeunggulanSubtitleEN: values[models.LandingKeunggulanSubtitleEN],
+		PropertiTitleEN:      values[models.LandingPropertiTitleEN],
+		PropertiSubtitleEN:   values[models.LandingPropertiSubtitleEN],
+		PaketTitleEN:         values[models.LandingPaketTitleEN],
+		PaketSubtitleEN:      values[models.LandingPaketSubtitleEN],
+		PanduanTitleEN:       values[models.LandingPanduanTitleEN],
+		PanduanSubtitleEN:    values[models.LandingPanduanSubtitleEN],
+		FAQTitleEN:           values[models.LandingFAQTitleEN],
+		FAQSubtitleEN:        values[models.LandingFAQSubtitleEN],
 
 		UpdatedAt: updatedAt,
 	}

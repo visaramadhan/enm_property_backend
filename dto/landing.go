@@ -11,17 +11,29 @@ import (
 // LandingContentView adalah konten landing page siap pakai untuk halaman
 // publik maupun editor CMS (admin, superadmin, dan owner mode baca).
 type LandingContentView struct {
-	HeroTitle       string    `json:"hero_title"`
-	HeroSubtitle    string    `json:"hero_subtitle"`
-	HeroCTAText     string    `json:"hero_cta_text"`
-	HeroImageURL    string    `json:"hero_image_url"`
-	MetaTitle       string    `json:"meta_title"`
-	MetaDescription string    `json:"meta_description"`
-	MetaOGImage     string    `json:"meta_og_image"`
-	HighlightAreas  []string  `json:"highlight_areas"`
-	CTATitle        string    `json:"cta_title"`
-	CTADescription  string    `json:"cta_description"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	HeroTitle       string   `json:"hero_title"`
+	HeroSubtitle    string   `json:"hero_subtitle"`
+	HeroCTAText     string   `json:"hero_cta_text"`
+	HeroImageURL    string   `json:"hero_image_url"`
+	MetaTitle       string   `json:"meta_title"`
+	MetaDescription string   `json:"meta_description"`
+	MetaOGImage     string   `json:"meta_og_image"`
+	HighlightAreas  []string `json:"highlight_areas"`
+	CTATitle        string   `json:"cta_title"`
+	CTADescription  string   `json:"cta_description"`
+
+	KeunggulanTitle    string `json:"keunggulan_title"`
+	KeunggulanSubtitle string `json:"keunggulan_subtitle"`
+	PropertiTitle      string `json:"properti_title"`
+	PropertiSubtitle   string `json:"properti_subtitle"`
+	PaketTitle         string `json:"paket_title"`
+	PaketSubtitle      string `json:"paket_subtitle"`
+	PanduanTitle       string `json:"panduan_title"`
+	PanduanSubtitle    string `json:"panduan_subtitle"`
+	FAQTitle           string `json:"faq_title"`
+	FAQSubtitle        string `json:"faq_subtitle"`
+
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // UpdateLandingRequest adalah body PUT /admin/landing.
@@ -40,6 +52,17 @@ type UpdateLandingRequest struct {
 	HighlightAreas  []string `json:"highlight_areas" validate:"required,min=4,max=6,dive,max=60"`
 	CTATitle        string   `json:"cta_title" validate:"max=70"`
 	CTADescription  string   `json:"cta_description" validate:"max=200"`
+
+	KeunggulanTitle    string `json:"keunggulan_title" validate:"max=70"`
+	KeunggulanSubtitle string `json:"keunggulan_subtitle" validate:"max=200"`
+	PropertiTitle      string `json:"properti_title" validate:"max=70"`
+	PropertiSubtitle   string `json:"properti_subtitle" validate:"max=200"`
+	PaketTitle         string `json:"paket_title" validate:"max=70"`
+	PaketSubtitle      string `json:"paket_subtitle" validate:"max=200"`
+	PanduanTitle       string `json:"panduan_title" validate:"max=70"`
+	PanduanSubtitle    string `json:"panduan_subtitle" validate:"max=200"`
+	FAQTitle           string `json:"faq_title" validate:"max=70"`
+	FAQSubtitle        string `json:"faq_subtitle" validate:"max=200"`
 }
 
 // LandingImageParam adalah parameter path jenis gambar landing yang diunggah.
@@ -89,7 +112,19 @@ func NewLandingContentView(items []*models.LandingContent) LandingContentView {
 		HighlightAreas:  DecodeStringList(values[models.LandingHighlightAreas]),
 		CTATitle:        values[models.LandingCTATitle],
 		CTADescription:  values[models.LandingCTADescription],
-		UpdatedAt:       updatedAt,
+
+		KeunggulanTitle:    values[models.LandingKeunggulanTitle],
+		KeunggulanSubtitle: values[models.LandingKeunggulanSubtitle],
+		PropertiTitle:      values[models.LandingPropertiTitle],
+		PropertiSubtitle:   values[models.LandingPropertiSubtitle],
+		PaketTitle:         values[models.LandingPaketTitle],
+		PaketSubtitle:      values[models.LandingPaketSubtitle],
+		PanduanTitle:       values[models.LandingPanduanTitle],
+		PanduanSubtitle:    values[models.LandingPanduanSubtitle],
+		FAQTitle:           values[models.LandingFAQTitle],
+		FAQSubtitle:        values[models.LandingFAQSubtitle],
+
+		UpdatedAt: updatedAt,
 	}
 }
 

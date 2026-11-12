@@ -189,6 +189,7 @@ func New(deps Deps) *gin.Engine {
 	mitraProfile.GET("/profile", partnerHandler.Profile)
 	mitraProfile.PUT("/profile", partnerHandler.UpdateProfile)
 	mitraProfile.GET("/agreement", partnerHandler.Agreement)
+	mitraProfile.POST("/agreement", partnerHandler.AcceptAgreement)
 	// Riwayat transaksi langganan mitra; tidak mensyaratkan paket aktif agar
 	// mitra yang baru checkout tetap dapat melihat status pembayarannya.
 	mitraProfile.GET("/orders", checkoutHandler.Orders)

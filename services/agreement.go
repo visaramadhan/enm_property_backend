@@ -65,6 +65,7 @@ func (s *AgreementService) CreateVersion(actor *models.User, req dto.CreateAgree
 		Version:     strings.TrimSpace(req.Version),
 		Title:       strings.TrimSpace(req.Title),
 		Content:     strings.TrimSpace(req.Content),
+		Checklist:   bersihkanCeklis(req.Checklist),
 		IsActive:    req.Activate,
 		EffectiveAt: effectiveAt,
 		CreatedAt:   now,
@@ -205,6 +206,17 @@ func (s *AgreementService) deactivateOthers(exceptID string) error {
 		}
 	}
 	return nil
+}
+
+// bersihkanCeklis memangkas spasi dan membuang poin ceklis yang kosong.
+func bersihkanCeklis(poin []string) []string {
+	hasil := make([]string, 0, len(poin))
+	for _, item := range poin {
+		if bersih := strings.TrimSpace(item); bersih != "" {
+			hasil = append(hasil, bersih)
+		}
+	}
+	return hasil
 }
 
 // acceptanceView membentuk tampilan bukti persetujuan.

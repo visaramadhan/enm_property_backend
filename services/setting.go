@@ -4,6 +4,7 @@ import (
 	"context"
 	"mime/multipart"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -34,9 +35,87 @@ type SettingService struct {
 	cache map[string]string
 }
 
+// settingDefinition mendeskripsikan satu kunci pengaturan bawaan: label,
+// nilai, dan deskripsi bawaannya. Definisi ini dipakai agar halaman
+// Pengaturan Sistem selalu menampilkan seluruh bidang meski tabel `settings`
+// masih kosong (mis. sebelum seed dijalankan).
+type settingDefinition struct {
+	Key         string
+	Label       string
+	Default     string
+	Description string
+	IsSecret    bool
+}
+
+// definitions menyusun daftar kunci pengaturan bawaan secara berurutan.
+// Nilai bawaan mengikuti konfigurasi aplikasi bila relevan (nama, nomor
+// WhatsApp admin, ambang hari) sehingga tampilan selalu sesuai perilaku nyata.
+func (s *SettingService) definitions() []settingDefinition {
+	app := s.deps.Config.App
+	return []settingDefinition{
+		{Key: models.SettingSiteName, Label: "Nama sistem", Default: app.Name, Description: "Nama situs yang tampil di header dan metadata."},
+		{Key: models.SettingSiteNavTitle, Label: "Judul di navbar", Default: app.Name, Description: "Teks judul yang tampil pada bilah navigasi."},
+		{Key: models.SettingSiteLogoURL, Label: "Logo sistem", Default: "", Description: "URL logo situs. Kosongkan untuk memakai monogram nama situs."},
+		{Key: models.SettingBrandColor, Label: "Warna sistem", Default: "", Description: "Warna aksen utama berformat HEX (mis. #1F6F4A). Kosongkan untuk memakai warna bawaan tema."},
+		{Key: models.SettingLoginImageURL, Label: "Gambar halaman masuk", Default: "", Description: "URL gambar panel area masuk dan daftar. Kosongkan untuk latar gradien bawaan."},
+		{Key: models.SettingAdminWhatsApp, Label: "Nomor WhatsApp admin", Default: app.WhatsAppAdmin, Description: "Nomor WhatsApp admin untuk inquiry mitra."},
+		{Key: models.SettingContactFallback, Label: "Nomor WhatsApp cadangan", Default: app.WhatsAppAdmin, Description: "Nomor fallback bila mitra belum mengisi kontak."},
+		{Key: models.SettingSubscriptionAlertDay, Label: "Ambang peringatan langganan", Default: strconv.Itoa(app.SubscriptionReminderDays), Description: "Jumlah hari peringatan sebelum langganan berakhir."},
+		{Key: models.SettingAgreementEnabled, Label: "Wajib persetujuan perjanjian", Default: "true", Description: "Isi \"true\" bila perjanjian wajib disetujui mitra sebelum mengunggah listing."},
+	}
+}
+
 // GetAll mengembalikan seluruh pengaturan dengan nilai rahasia tersamar.
+//
+// Seluruh kunci bawaan selalu disertakan (memakai nilai basis data bila ada,
+// atau nilai bawaan bila belum tersimpan) sehingga halaman Pengaturan Sistem
+// tidak pernah kosong. Kunci tambahan di luar daftar bawaan tetap ditampilkan
+// agar tidak hilang.
 func (s *SettingService) GetAll() []dto.SettingView {
-	return dto.NewSettingViews(s.deps.Repos.Settings.All())
+	stored := s.deps.Repos.Settings.All()
+	byKey := make(map[string]*models.Setting, len(stored))
+	for _, item := range stored {
+		if item != nil {
+			byKey[item.Key] = item
+		}
+	}
+
+	defs := s.definitions()
+	views := make([]dto.SettingView, 0, len(defs))
+	known := make(map[string]struct{}, len(defs))
+	for _, def := range defs {
+		known[def.Key] = struct{}{}
+
+		value := def.Default
+		view := dto.SettingView{
+			Key:         def.Key,
+			Label:       def.Label,
+			Description: def.Description,
+			IsSecret:    def.IsSecret,
+		}
+		if item := byKey[def.Key]; item != nil {
+			view.UpdatedAt = item.UpdatedAt
+			if item.Value != "" {
+				value = item.Value
+			}
+		}
+		if def.IsSecret && value != "" {
+			value = maskedValue
+		}
+		view.Value = value
+		views = append(views, view)
+	}
+
+	for _, item := range stored {
+		if item == nil {
+			continue
+		}
+		if _, ok := known[item.Key]; ok {
+			continue
+		}
+		views = append(views, dto.NewSettingView(item))
+	}
+	return views
 }
 
 // Update menyimpan perubahan pengaturan lalu menyegarkan cache nilainya.
@@ -108,6 +187,18 @@ func (s *SettingService) ContactFallback() string {
 // SiteName mengembalikan nama situs yang dipakai header dan metadata.
 func (s *SettingService) SiteName() string {
 	return firstNonEmpty(s.GetValue(models.SettingSiteName), s.deps.Config.App.Name)
+}
+
+// SiteNavTitle mengembalikan judul yang tampil pada bilah navigasi. Bila belum
+// diisi, nilainya mengikuti nama situs.
+func (s *SettingService) SiteNavTitle() string {
+	return firstNonEmpty(s.GetValue(models.SettingSiteNavTitle), s.SiteName())
+}
+
+// BrandColor mengembalikan warna aksen sistem berformat HEX. Nilai kosong
+// berarti antarmuka memakai warna bawaan tema.
+func (s *SettingService) BrandColor() string {
+	return strings.TrimSpace(s.GetValue(models.SettingBrandColor))
 }
 
 // SiteLogoURL mengembalikan URL logo situs. Nilai kosong berarti antarmuka

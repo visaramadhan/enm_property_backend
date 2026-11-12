@@ -8,6 +8,7 @@ type Agreement struct {
 	Version     string    `json:"version"`
 	Title       string    `json:"title"`
 	Content     string    `json:"content"`
+	Checklist   []string  `json:"checklist"`
 	IsActive    bool      `json:"is_active"`
 	EffectiveAt time.Time `json:"effective_at"`
 	CreatedBy   string    `json:"created_by"`

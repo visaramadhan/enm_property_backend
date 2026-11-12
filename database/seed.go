@@ -176,10 +176,17 @@ func seedFacilities(store *Store, today time.Time) {
 }
 
 func seedAgreement(store *Store, today time.Time) {
+	checklist := []string{
+		"Saya mengisi data properti dengan benar dan dapat dipertanggungjawabkan.",
+		"Saya hanya menayangkan properti yang saya miliki hak untuk memasarkannya.",
+		"Saya bersedia mengikuti kebijakan moderasi dan penurunan listing oleh platform.",
+		"Saya memahami kuota dan batas paket yang sedang aktif.",
+	}
 	agreement := &models.Agreement{
 		ID: SeedAgreement, Version: "2026.01", Title: "Perjanjian Kemitraan ENM Property",
-		Content:  "Dengan mendaftar sebagai mitra, Anda menyetujui ketentuan pemuatan listing, kebenaran data properti, dan kebijakan moderasi platform.",
-		IsActive: true, EffectiveAt: today.AddDate(0, -6, 0), CreatedBy: SeedUserSuperadmin,
+		Content:   "Dengan mendaftar sebagai mitra, Anda menyetujui ketentuan pemuatan listing, kebenaran data properti, dan kebijakan moderasi platform.",
+		Checklist: checklist,
+		IsActive:  true, EffectiveAt: today.AddDate(0, -6, 0), CreatedBy: SeedUserSuperadmin,
 		CreatedAt: today.AddDate(0, -6, 0),
 	}
 	store.agreements[agreement.ID] = copyAgreement(agreement)

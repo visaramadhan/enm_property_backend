@@ -9,7 +9,7 @@ import (
 	"enmproperty/backend/models"
 )
 
-const agreementColumns = `id, version, title, content, is_active, effective_at, created_by, created_at`
+const agreementColumns = `id, version, title, content, checklist, is_active, effective_at, created_by, created_at`
 
 const acceptanceColumns = `id, agreement_id, agreement_version, user_id, partner_id, ` +
 	`accepted_at, ip_address, user_agent`
@@ -21,7 +21,8 @@ func scanAgreement(row pgx.Row) (*models.Agreement, error) {
 	var agreement models.Agreement
 	if err := row.Scan(
 		&agreement.ID, &agreement.Version, &agreement.Title, &agreement.Content,
-		&agreement.IsActive, &agreement.EffectiveAt, &agreement.CreatedBy, &agreement.CreatedAt,
+		&agreement.Checklist, &agreement.IsActive, &agreement.EffectiveAt,
+		&agreement.CreatedBy, &agreement.CreatedAt,
 	); err != nil {
 		return nil, err
 	}
@@ -44,10 +45,11 @@ func scanAcceptance(row pgx.Row) (*models.AgreementAcceptance, error) {
 func (r *postgresAgreementRepository) Create(agreement *models.Agreement) error {
 	ctx := context.Background()
 	const query = `INSERT INTO agreements (` + agreementColumns + `)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
 	_, err := r.pool.Exec(ctx, query,
 		agreement.ID, agreement.Version, agreement.Title, agreement.Content,
-		agreement.IsActive, agreement.EffectiveAt, agreement.CreatedBy, agreement.CreatedAt,
+		agreement.Checklist, agreement.IsActive, agreement.EffectiveAt,
+		agreement.CreatedBy, agreement.CreatedAt,
 	)
 	return err
 }
@@ -55,12 +57,13 @@ func (r *postgresAgreementRepository) Create(agreement *models.Agreement) error 
 func (r *postgresAgreementRepository) Update(agreement *models.Agreement) error {
 	ctx := context.Background()
 	const query = `UPDATE agreements SET
-		version = $2, title = $3, content = $4, is_active = $5, effective_at = $6,
-		created_by = $7, created_at = $8
+		version = $2, title = $3, content = $4, checklist = $5, is_active = $6,
+		effective_at = $7, created_by = $8, created_at = $9
 		WHERE id = $1`
 	tag, err := r.pool.Exec(ctx, query,
 		agreement.ID, agreement.Version, agreement.Title, agreement.Content,
-		agreement.IsActive, agreement.EffectiveAt, agreement.CreatedBy, agreement.CreatedAt,
+		agreement.Checklist, agreement.IsActive, agreement.EffectiveAt,
+		agreement.CreatedBy, agreement.CreatedAt,
 	)
 	if err != nil {
 		return err

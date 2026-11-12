@@ -17,6 +17,19 @@ const (
 	LandingHighlightAreas  = "highlight_areas"
 	LandingCTATitle        = "cta_title"
 	LandingCTADescription  = "cta_description"
+
+	// Judul dan deskripsi tiap bagian (section) landing page. Nilai kosong
+	// berarti halaman memakai teks bawaan yang tertanam di komponen.
+	LandingKeunggulanTitle    = "keunggulan_title"
+	LandingKeunggulanSubtitle = "keunggulan_subtitle"
+	LandingPropertiTitle      = "properti_title"
+	LandingPropertiSubtitle   = "properti_subtitle"
+	LandingPaketTitle         = "paket_title"
+	LandingPaketSubtitle      = "paket_subtitle"
+	LandingPanduanTitle       = "panduan_title"
+	LandingPanduanSubtitle    = "panduan_subtitle"
+	LandingFAQTitle           = "faq_title"
+	LandingFAQSubtitle        = "faq_subtitle"
 )
 
 // LandingContent adalah satu pasangan kunci-nilai konten landing page.

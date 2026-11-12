@@ -231,9 +231,13 @@ func (s *SubscriptionService) view(subscription *models.Subscription) dto.Subscr
 	view.ShowAlert = view.IsActive && view.DaysRemaining <= threshold
 
 	quota := -1
+	// Bila paket tidak dapat dibaca, akses WhatsApp dibiarkan terbuka agar
+	// mitra tidak kehilangan kemampuan mengelola kontaknya.
+	view.WhatsAppAccess = true
 	if plan, err := s.deps.Repos.Plans.GetByID(subscription.PlanID); err == nil {
 		quota = plan.ListingQuota
 		view.BoostQuota = plan.BoostQuota
+		view.WhatsAppAccess = plan.WhatsAppAccess
 	}
 	used := s.usage(subscription.PartnerID)
 	view.ListingQuota = quota

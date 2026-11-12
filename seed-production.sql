@@ -10,12 +10,16 @@
 -- =============================================================================
 
 -- --- Perjanjian kemitraan aktif ------------------------------------------------
-INSERT INTO agreements (id, version, title, content, is_active, effective_at, created_by)
+INSERT INTO agreements (id, version, title, content, checklist, is_active, effective_at, created_by)
 VALUES (
   'agr-2026-01',
   '2026.01',
   'Perjanjian Kemitraan ENM Property',
   'Dengan mendaftar sebagai mitra, Anda menyetujui ketentuan pemuatan listing, kebenaran data properti, dan kebijakan moderasi platform.',
+  '["Saya mengisi data properti dengan benar dan dapat dipertanggungjawabkan.",
+    "Saya hanya menayangkan properti yang saya miliki hak untuk memasarkannya.",
+    "Saya bersedia mengikuti kebijakan moderasi dan penurunan listing oleh platform.",
+    "Saya memahami kuota dan batas paket yang sedang aktif."]'::jsonb,
   true,
   now(),
   'system'
@@ -24,6 +28,7 @@ ON CONFLICT (id) DO UPDATE
   SET version = EXCLUDED.version,
       title = EXCLUDED.title,
       content = EXCLUDED.content,
+      checklist = EXCLUDED.checklist,
       is_active = EXCLUDED.is_active;
 
 -- --- Paket langganan -----------------------------------------------------------
@@ -95,32 +100,43 @@ ON CONFLICT (id) DO UPDATE
 INSERT INTO settings (key, value, description, is_secret, updated_by, updated_at)
 VALUES
   ('site_name', 'ENM Property', 'Nama situs yang tampil di header dan metadata.', false, 'system', now()),
+  ('site_nav_title', 'ENM Property', 'Teks judul yang tampil pada bilah navigasi.', false, 'system', now()),
+  ('site_logo_url', '', 'URL logo situs. Kosongkan untuk memakai monogram nama situs.', false, 'system', now()),
+  ('brand_color', '', 'Warna aksen utama berformat HEX (mis. #1F6F4A). Kosongkan untuk warna bawaan tema.', false, 'system', now()),
+  ('login_image_url', 'https://images.unsplash.com/photo-1497366216548-37526070297c', 'URL gambar panel area masuk dan daftar. Kosongkan untuk latar gradien bawaan.', false, 'system', now()),
   ('admin_whatsapp', '+6281100000000', 'Nomor WhatsApp admin untuk inquiry mitra.', false, 'system', now()),
   ('subscription_alert_days', '7', 'Ambang hari peringatan sebelum langganan berakhir.', false, 'system', now()),
   ('contact_fallback_whatsapp', '+6281100000000', 'Nomor fallback bila mitra belum mengisi kontak.', false, 'system', now()),
-  ('agreement_required', 'true', 'Wajib menyetujui perjanjian sebelum mengunggah listing.', false, 'system', now()),
-  ('site_logo_url', '', 'URL logo situs. Kosongkan untuk memakai monogram nama situs.', false, 'system', now()),
-  ('login_image_url', 'https://images.unsplash.com/photo-1497366216548-37526070297c', 'URL gambar panel area masuk dan daftar. Kosongkan untuk latar gradien bawaan.', false, 'system', now())
+  ('agreement_required', 'true', 'Wajib menyetujui perjanjian sebelum mengunggah listing.', false, 'system', now())
 ON CONFLICT (key) DO UPDATE
   SET value = EXCLUDED.value,
       description = EXCLUDED.description,
       updated_at = now();
 
 -- --- Konten landing page (CMS) -------------------------------------------------
+-- Kunci mengikuti `models/landing.go` (nilai lain tidak dibaca halaman).
 INSERT INTO landing_content (key, value, updated_by, updated_at)
 VALUES
   ('hero_title', 'Temukan properti yang tepat untukmu.', 'system', now()),
   ('hero_subtitle', 'Platform listing properti terpercaya untuk sewa dan jual.', 'system', now()),
   ('hero_cta_text', 'Sewa & Beli Properti', 'system', now()),
-  ('hero_cta_href', '/katalog', 'system', now()),
   ('hero_image_url', '', 'system', now()),
-  ('cta_title', 'Siap memasarkan properti melalui ENM?', 'system', now()),
-  ('cta_subtitle', 'Daftar sebagai mitra dan jangkau lebih banyak calon pembeli.', 'system', now()),
-  ('cta_button_text', 'Daftar Sebagai Mitra', 'system', now()),
-  ('cta_button_href', '/daftar-mitra', 'system', now()),
   ('meta_title', 'ENM Property - Sewa & Jual Properti Terbaik di Bali', 'system', now()),
   ('meta_description', 'Temukan properti impian untuk disewa atau dibeli. Daftar mitra untuk memasarkan properti Anda.', 'system', now()),
-  ('og_image_url', '', 'system', now())
+  ('meta_og_image', '', 'system', now()),
+  ('highlight_areas', '["Canggu","Seminyak","Ubud","Sanur"]', 'system', now()),
+  ('cta_title', 'Siap memasarkan properti melalui ENM?', 'system', now()),
+  ('cta_description', 'Daftar sebagai mitra dan jangkau lebih banyak calon pembeli.', 'system', now()),
+  ('keunggulan_title', 'Kenapa Memilih ENM Property', 'system', now()),
+  ('keunggulan_subtitle', '', 'system', now()),
+  ('properti_title', 'Properti Pilihan', 'system', now()),
+  ('properti_subtitle', '', 'system', now()),
+  ('paket_title', 'Paket Kemitraan', 'system', now()),
+  ('paket_subtitle', '', 'system', now()),
+  ('panduan_title', 'Panduan Menjadi Mitra', 'system', now()),
+  ('panduan_subtitle', '', 'system', now()),
+  ('faq_title', 'Pertanyaan Umum', 'system', now()),
+  ('faq_subtitle', '', 'system', now())
 ON CONFLICT (key) DO UPDATE
   SET value = EXCLUDED.value,
       updated_at = now();

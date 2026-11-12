@@ -79,3 +79,26 @@ func (h *PartnerHandler) Agreement(c *gin.Context) {
 	}
 	httpx.OK(c, payload)
 }
+
+// AcceptAgreement mencatat persetujuan mitra atas versi perjanjian yang
+// berlaku (mis. saat modal perjanjian pertama kali ditampilkan di dashboard).
+func (h *PartnerHandler) AcceptAgreement(c *gin.Context) {
+	var req dto.AcceptAgreementRequest
+	if !middleware.BindJSON(c, &req) {
+		return
+	}
+
+	user := middleware.CurrentUser(c)
+	partner, err := h.services.Partner.GetByUserID(user.ID)
+	if err != nil {
+		httpx.Respond(c, err)
+		return
+	}
+
+	acceptance, err := h.services.Partner.AcceptAgreement(user, partner, req.AgreementID, requestMeta(c))
+	if err != nil {
+		httpx.Respond(c, err)
+		return
+	}
+	httpx.OK(c, acceptance)
+}

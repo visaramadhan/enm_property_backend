@@ -127,6 +127,7 @@ func copyAgreement(in *models.Agreement) *models.Agreement {
 		return nil
 	}
 	out := *in
+	out.Checklist = copyStrings(in.Checklist)
 	return &out
 }
 

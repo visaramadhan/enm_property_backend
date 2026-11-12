@@ -156,9 +156,12 @@ type SubscriptionView struct {
 	// BoostQuota adalah kuota boost listing paket aktif; 0 berarti tanpa boost.
 	BoostQuota int `json:"boost_quota"`
 	// BoostUsed adalah jumlah listing mitra yang sedang di-boost bersamaan.
-	BoostUsed  int       `json:"boost_used"`
-	UpdatedAt  time.Time `json:"updated_at"`
-	LastOrderCode      string    `json:"last_order_code,omitempty"`
+	BoostUsed int `json:"boost_used"`
+	// WhatsAppAccess menandakan mitra boleh mengisi nomor WhatsApp sendiri.
+	// Paket Gratis bernilai false sehingga kontak memakai nomor sistem.
+	WhatsAppAccess bool      `json:"whatsapp_access"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	LastOrderCode  string    `json:"last_order_code,omitempty"`
 }
 
 // NewSubscriptionView membentuk tampilan langganan dari entitas domain.

@@ -9,6 +9,7 @@ import (
 // SettingView adalah representasi pengaturan sistem untuk halaman admin.
 type SettingView struct {
 	Key         string    `json:"key"`
+	Label       string    `json:"label"`
 	Value       string    `json:"value"`
 	Description string    `json:"description"`
 	IsSecret    bool      `json:"is_secret"`
@@ -53,8 +54,13 @@ type UpdateSettingsRequest struct {
 // (mis. area masuk) tanpa autentikasi. Hanya berisi nilai yang tidak rahasia.
 type PublicSettingsView struct {
 	SiteName      string `json:"site_name"`
+	NavTitle      string `json:"nav_title"`
 	LogoURL       string `json:"logo_url"`
+	BrandColor    string `json:"brand_color"`
 	LoginImageURL string `json:"login_image_url"`
+	// ContactWhatsApp adalah nomor kontak cadangan sistem yang dipakai saat
+	// mitra tidak mengisi nomor WhatsApp-nya (mis. paket Gratis).
+	ContactWhatsApp string `json:"contact_whatsapp"`
 }
 
 // SettingImageResponse adalah hasil unggahan gambar pengaturan (logo/latar masuk).

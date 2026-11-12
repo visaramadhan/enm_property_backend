@@ -332,6 +332,11 @@ func (s *CatalogService) GetContact(slugOrID string, viewer *models.User) (dto.C
 		response.PartnerName = partner.BusinessName
 		number = partner.Phone
 	}
+	// Paket yang tidak memberi akses WhatsApp (mis. paket Gratis) selalu
+	// memakai nomor sistem, meskipun mitra menyimpan nomor sendiri.
+	if !s.whatsappDiizinkan(property.PartnerID) {
+		number = ""
+	}
 	if strings.TrimSpace(number) == "" {
 		number = s.settings.ContactFallback()
 		response.IsFallback = true
@@ -394,6 +399,21 @@ func (s *CatalogService) publicProperty(slugOrID string) (*models.Property, erro
 		return nil, httpx.NotFound("Properti tidak ditemukan")
 	}
 	return property, nil
+}
+
+// whatsappDiizinkan memeriksa apakah paket aktif mitra mengizinkan nomor
+// WhatsApp sendiri. Paket tanpa akses (mis. paket Gratis) selalu memakai nomor
+// sistem. Bila langganan atau paket tidak dapat dibaca, nomor mitra dipakai.
+func (s *CatalogService) whatsappDiizinkan(partnerID string) bool {
+	sub, err := s.deps.Repos.Subscriptions.GetActiveByPartner(partnerID)
+	if err != nil || sub == nil || !sub.IsActiveAt(timeNow()) {
+		return true
+	}
+	plan, err := s.deps.Repos.Plans.GetByID(sub.PlanID)
+	if err != nil || plan == nil {
+		return true
+	}
+	return plan.WhatsAppAccess
 }
 
 // contactMessage menyusun pesan WhatsApp awal berisi judul dan tautan properti.

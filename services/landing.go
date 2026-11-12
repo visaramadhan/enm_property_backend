@@ -49,6 +49,17 @@ func (s *LandingService) Update(actorID string, req dto.UpdateLandingRequest) (d
 		models.LandingHighlightAreas:  dto.EncodeStringList(cleanAreas(req.HighlightAreas)),
 		models.LandingCTATitle:        strings.TrimSpace(req.CTATitle),
 		models.LandingCTADescription:  strings.TrimSpace(req.CTADescription),
+
+		models.LandingKeunggulanTitle:    strings.TrimSpace(req.KeunggulanTitle),
+		models.LandingKeunggulanSubtitle: strings.TrimSpace(req.KeunggulanSubtitle),
+		models.LandingPropertiTitle:      strings.TrimSpace(req.PropertiTitle),
+		models.LandingPropertiSubtitle:   strings.TrimSpace(req.PropertiSubtitle),
+		models.LandingPaketTitle:         strings.TrimSpace(req.PaketTitle),
+		models.LandingPaketSubtitle:      strings.TrimSpace(req.PaketSubtitle),
+		models.LandingPanduanTitle:       strings.TrimSpace(req.PanduanTitle),
+		models.LandingPanduanSubtitle:    strings.TrimSpace(req.PanduanSubtitle),
+		models.LandingFAQTitle:           strings.TrimSpace(req.FAQTitle),
+		models.LandingFAQSubtitle:        strings.TrimSpace(req.FAQSubtitle),
 	}
 
 	for key, value := range values {

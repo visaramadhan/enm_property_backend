@@ -83,6 +83,21 @@ func (h *CheckoutHandler) Payment(c *gin.Context) {
 	httpx.OK(c, view)
 }
 
+// Cancel membatalkan order langganan yang masih menunggu pembayaran.
+func (h *CheckoutHandler) Cancel(c *gin.Context) {
+	var params dto.CodeParam
+	if !middleware.BindURI(c, &params) {
+		return
+	}
+
+	view, err := h.services.Payment.CancelOrder(middleware.CurrentUser(c), params.OrderCode)
+	if err != nil {
+		httpx.Respond(c, err)
+		return
+	}
+	httpx.OK(c, view)
+}
+
 // Orders mengembalikan riwayat transaksi langganan milik mitra yang sedang masuk.
 func (h *CheckoutHandler) Orders(c *gin.Context) {
 	var query dto.PaginationQuery

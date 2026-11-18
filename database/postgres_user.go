@@ -116,6 +116,59 @@ func (r *postgresUserRepository) GetByEmail(email string) (*models.User, error) 
 	return user, nil
 }
 
+// DeleteUserCascade menghapus akun beserta seluruh data terkait dalam satu
+// transaksi atomik. Query yang bergantung pada partnerID dilewati bila pengguna
+// bukan mitra (partnerID kosong).
+func (r *postgresUserRepository) DeleteUserCascade(ctx context.Context, userID, partnerID string, propertyIDs []string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	// Rollback setelah commit adalah no-op sehingga aman dipanggil tanpa syarat.
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if len(propertyIDs) > 0 {
+		for _, table := range []string{"property_photos", "property_contacts", "property_views"} {
+			if _, err := tx.Exec(ctx, "DELETE FROM "+table+" WHERE property_id = ANY($1::text[])", propertyIDs); err != nil {
+				return err
+			}
+		}
+		if _, err := tx.Exec(ctx, "DELETE FROM favorites WHERE property_id = ANY($1::text[])", propertyIDs); err != nil {
+			return err
+		}
+	}
+
+	if _, err := tx.Exec(ctx, "DELETE FROM favorites WHERE user_id = $1", userID); err != nil {
+		return err
+	}
+
+	if partnerID != "" {
+		if _, err := tx.Exec(ctx, "DELETE FROM properties WHERE partner_id = $1", partnerID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, "DELETE FROM subscriptions WHERE partner_id = $1", partnerID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, "DELETE FROM orders WHERE partner_id = $1", partnerID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, "DELETE FROM agreement_acceptances WHERE partner_id = $1", partnerID); err != nil {
+			return err
+		}
+	}
+
+	if _, err := tx.Exec(ctx, "DELETE FROM agreement_acceptances WHERE user_id = $1", userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, "DELETE FROM partners WHERE user_id = $1", userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, "DELETE FROM users WHERE id = $1", userID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (r *postgresUserRepository) List(q ListQuery) ([]*models.User, int, error) {
 	ctx := context.Background()
 	var w whereBuilder

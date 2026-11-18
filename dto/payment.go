@@ -82,6 +82,11 @@ type CheckoutResponse struct {
 	ClientKey       string    `json:"client_key,omitempty"`
 	Simulated       bool      `json:"simulated"`
 	FreeActive      bool      `json:"free_active"`
+	// Reused menandakan order pending yang sudah ada dipakai ulang sehingga
+	// frontend dapat mengarahkan pengguna ke halaman pembayaran yang tertunda.
+	Reused bool `json:"reused"`
+	// OrderCode memudahkan frontend mengarahkan tanpa membaca Order.Code.
+	OrderCode string `json:"order_code,omitempty"`
 }
 
 // OrderStatusView adalah respons GET /subscriptions/orders/{orderCode}/status.

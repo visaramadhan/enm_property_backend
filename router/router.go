@@ -161,6 +161,8 @@ func New(deps Deps) *gin.Engine {
 	authed := api.Group("", authRequired)
 	authed.GET("/me", meHandler.Get)
 	authed.PUT("/me", meHandler.Update)
+	// Penghapusan akun oleh pengguna sendiri beserta seluruh data terkait.
+	authed.DELETE("/me", meHandler.Delete)
 	// Kontak WhatsApp mencatat pengguna yang menghubungi mitra; karenanya
 	// endpoint ini mensyaratkan login (pengunjung diarahkan masuk lebih dulu).
 	authed.GET("/properties/:slug/contact", catalogHandler.Contact)
@@ -174,6 +176,8 @@ func New(deps Deps) *gin.Engine {
 		middleware.RateLimit(cfg.RateLimit, cfg.RateLimit.CheckoutRequests),
 		checkoutHandler.Charge,
 	)
+	// Batal order langganan yang masih menunggu pembayaran.
+	authed.POST("/subscriptions/orders/:orderCode/cancel", checkoutHandler.Cancel)
 	authed.GET("/subscriptions/orders/:orderCode/payment", checkoutHandler.Payment)
 	authed.GET("/invoices/:orderCode", invoiceHandler.Get)
 	authed.GET("/invoices/:orderCode/pdf", invoiceHandler.PDF)

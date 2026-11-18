@@ -20,6 +20,9 @@ type pgxPool interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	// Begin memulai transaksi agar operasi berurutan dapat dijalankan secara
+	// atomik (mis. penghapusan akun beserta seluruh data terkait).
+	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
 // NewPostgresPool menyiapkan pool koneksi PostgreSQL (pgxpool) dari konfigurasi

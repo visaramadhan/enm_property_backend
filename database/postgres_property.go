@@ -346,6 +346,42 @@ func (r *postgresPropertyRepository) List(q ListQuery) ([]*models.Property, int,
 	return properties, total, nil
 }
 
+// ListAllByPartner mengembalikan seluruh properti mitra termasuk yang sudah
+// dihapus lunak. Dipakai saat pembersihan akun agar foto dan relasinya ikut
+// terhapus. Foto ikut dimuat untuk mengambil path penyimpanannya.
+func (r *postgresPropertyRepository) ListAllByPartner(partnerID string) ([]*models.Property, error) {
+	ctx := context.Background()
+	const query = `SELECT ` + propertyColumns + ` FROM properties WHERE partner_id = $1`
+	rows, err := r.pool.Query(ctx, query, partnerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	properties := make([]*models.Property, 0)
+	ids := make([]string, 0)
+	for rows.Next() {
+		property, err := scanProperty(rows)
+		if err != nil {
+			return nil, err
+		}
+		properties = append(properties, property)
+		ids = append(ids, property.ID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	grouped, err := r.loadPhotos(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, property := range properties {
+		attachPhotos(property, grouped)
+	}
+	return properties, nil
+}
+
 func (r *postgresPropertyRepository) CreatePhoto(photo *models.PropertyPhoto) error {
 	return r.upsertPhoto(context.Background(), photo)
 }

@@ -234,6 +234,25 @@ func (r *memoryPropertyRepository) List(q ListQuery) ([]*models.Property, int, e
 	return page, total, nil
 }
 
+// ListAllByPartner mengembalikan seluruh properti mitra termasuk yang sudah
+// dihapus lunak beserta fotonya, dipakai saat pembersihan akun.
+func (r *memoryPropertyRepository) ListAllByPartner(partnerID string) ([]*models.Property, error) {
+	properties := make([]*models.Property, 0)
+	r.store.mu.RLock()
+	for _, property := range r.store.properties {
+		if property.PartnerID != partnerID {
+			continue
+		}
+		properties = append(properties, r.attachPhotos(copyProperty(property)))
+	}
+	r.store.mu.RUnlock()
+
+	SortByFunc(properties, func(a, b *models.Property) bool {
+		return a.CreatedAt.Before(b.CreatedAt)
+	}, true)
+	return properties, nil
+}
+
 func (r *memoryPropertyRepository) CreatePhoto(photo *models.PropertyPhoto) error {
 	r.store.mu.Lock()
 	defer r.store.mu.Unlock()

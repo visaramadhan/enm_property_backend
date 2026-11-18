@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"errors"
 
 	"enmproperty/backend/models"
@@ -93,6 +94,76 @@ func (r *memoryUserRepository) List(q ListQuery) ([]*models.User, int, error) {
 
 	page, total := Paginate(filtered, q)
 	return page, total, nil
+}
+
+// DeleteUserCascade menghapus akun beserta seluruh data terkait dari penyimpanan
+// in-memory. Query yang bergantung pada partnerID dilewati bila pengguna bukan
+// mitra (partnerID kosong).
+func (r *memoryUserRepository) DeleteUserCascade(_ context.Context, userID, partnerID string, propertyIDs []string) error {
+	r.store.mu.Lock()
+	defer r.store.mu.Unlock()
+
+	propertySet := make(map[string]struct{}, len(propertyIDs))
+	for _, id := range propertyIDs {
+		propertySet[id] = struct{}{}
+	}
+
+	for id, photo := range r.store.photos {
+		if _, ok := propertySet[photo.PropertyID]; ok {
+			delete(r.store.photos, id)
+		}
+	}
+
+	views := r.store.views[:0]
+	for _, view := range r.store.views {
+		if _, ok := propertySet[view.PropertyID]; !ok {
+			views = append(views, view)
+		}
+	}
+	r.store.views = views
+
+	contacts := r.store.contacts[:0]
+	for _, contact := range r.store.contacts {
+		if _, ok := propertySet[contact.PropertyID]; !ok {
+			contacts = append(contacts, contact)
+		}
+	}
+	r.store.contacts = contacts
+
+	for id, favorite := range r.store.favorites {
+		_, byProperty := propertySet[favorite.PropertyID]
+		if favorite.UserID == userID || byProperty {
+			delete(r.store.favorites, id)
+		}
+	}
+
+	for id, property := range r.store.properties {
+		if property.PartnerID == partnerID && partnerID != "" {
+			delete(r.store.properties, id)
+		}
+	}
+	for id, subscription := range r.store.subscriptions {
+		if subscription.PartnerID == partnerID && partnerID != "" {
+			delete(r.store.subscriptions, id)
+		}
+	}
+	for id, order := range r.store.orders {
+		if order.PartnerID == partnerID && partnerID != "" {
+			delete(r.store.orders, id)
+		}
+	}
+	for id, acceptance := range r.store.acceptances {
+		if acceptance.UserID == userID || (partnerID != "" && acceptance.PartnerID == partnerID) {
+			delete(r.store.acceptances, id)
+		}
+	}
+	for id, partner := range r.store.partners {
+		if partner.UserID == userID {
+			delete(r.store.partners, id)
+		}
+	}
+	delete(r.store.users, userID)
+	return nil
 }
 
 type memoryPartnerRepository struct{ store *Store }

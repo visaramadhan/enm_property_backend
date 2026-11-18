@@ -205,6 +205,26 @@ func (c *Client) PasswordResetLink(ctx context.Context, email string) (string, e
 	return c.auth.PasswordResetLink(ctx, email)
 }
 
+// DeleteUser menghapus akun Firebase. Operasi dilewati tanpa error bila klien
+// berjalan dalam mode terbatas (tanpa kredensial Admin) atau AUTH_DEV_MODE aktif.
+// Akun yang memang sudah tidak ada diperlakukan sebagai sukses.
+func (c *Client) DeleteUser(ctx context.Context, uid string) error {
+	if c.auth == nil || c.devMode {
+		return nil
+	}
+	uid = strings.TrimSpace(uid)
+	if uid == "" {
+		return nil
+	}
+	if err := c.auth.DeleteUser(ctx, uid); err != nil {
+		if auth.IsUserNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
 // devTokenClaims membentuk klaim dari token uji berformat "<token>" atau
 // "<token>:<firebaseUID>". Peran ditebak dari UID agar pengujian per role mudah.
 func (c *Client) devTokenClaims(idToken string) *Token {

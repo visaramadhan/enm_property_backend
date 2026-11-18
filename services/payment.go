@@ -86,6 +86,22 @@ func (s *PaymentService) Checkout(ctx context.Context, user *models.User, req dt
 		return dto.CheckoutResponse{
 			Order:      dto.NewOrderView(order),
 			FreeActive: true,
+			OrderCode:  order.Code,
+		}, nil
+	}
+
+	// Cegah order ganda: bila mitra masih memiliki order pending yang belum
+	// kedaluwarsa untuk paket yang sama, pakai kembali order tersebut beserta
+	// token Snap-nya alih-alih membuat order baru.
+	if existing := s.pendingOrder(partner.ID, plan.ID); existing != nil {
+		return dto.CheckoutResponse{
+			Order:           dto.NewOrderView(existing),
+			SnapToken:       existing.SnapToken,
+			SnapRedirectURL: existing.SnapRedirectURL,
+			ClientKey:       s.deps.Config.Midtrans.ClientKey,
+			Simulated:       existing.Provider == models.PaymentProviderSimulated,
+			Reused:          true,
+			OrderCode:       existing.Code,
 		}, nil
 	}
 
@@ -158,6 +174,7 @@ func (s *PaymentService) Checkout(ctx context.Context, user *models.User, req dt
 		SnapRedirectURL: snap.RedirectURL,
 		ClientKey:       s.deps.Config.Midtrans.ClientKey,
 		Simulated:       snap.Simulated,
+		OrderCode:       order.Code,
 	}, nil
 }
 
@@ -527,6 +544,72 @@ func (s *PaymentService) orderByCode(orderCode string) (*models.Order, error) {
 		return nil, httpx.Internal(err)
 	}
 	return order, nil
+}
+
+// CancelOrder membatalkan order langganan yang masih menunggu pembayaran.
+func (s *PaymentService) CancelOrder(user *models.User, orderCode string) (dto.OrderStatusView, error) {
+	order, err := s.orderByCode(orderCode)
+	if err != nil {
+		return dto.OrderStatusView{}, err
+	}
+	if !s.canManageOrder(user, order) {
+		return dto.OrderStatusView{}, httpx.Forbidden("Anda tidak berhak membatalkan order ini")
+	}
+	if order.Status != models.OrderStatusPending {
+		return dto.OrderStatusView{}, httpx.Unprocessable("Order tidak dapat dibatalkan pada status ini")
+	}
+
+	order.Status = models.OrderStatusCancelled
+	order.UpdatedAt = timeNow()
+	if err := s.deps.Repos.Orders.Update(order); err != nil {
+		return dto.OrderStatusView{}, httpx.Internal(err)
+	}
+	return s.statusView(order), nil
+}
+
+// canManageOrder memeriksa apakah pengguna berhak mengelola order, baik sebagai
+// pemesan, pemilik profil mitra terkait, maupun pengelola platform.
+func (s *PaymentService) canManageOrder(user *models.User, order *models.Order) bool {
+	if user == nil || order == nil {
+		return false
+	}
+	if order.UserID == user.ID || user.Role.IsInternal() {
+		return true
+	}
+	if order.PartnerID != "" {
+		if partner, err := s.deps.Repos.Partners.GetByID(order.PartnerID); err == nil && partner != nil {
+			return partner.UserID == user.ID
+		}
+	}
+	return false
+}
+
+// pendingOrder mengembalikan order pending yang belum kedaluwarsa untuk
+// pasangan mitra dan paket, atau nil bila tidak ada. Dipakai untuk mencegah
+// pembuatan order ganda.
+func (s *PaymentService) pendingOrder(partnerID, planID string) *models.Order {
+	if partnerID == "" || planID == "" {
+		return nil
+	}
+	orders, _, err := s.deps.Repos.Orders.List(database.ListQuery{
+		PerPage: 0,
+		Filters: map[string]string{
+			"status":     string(models.OrderStatusPending),
+			"partner_id": partnerID,
+			"plan_id":    planID,
+		},
+	})
+	if err != nil {
+		return nil
+	}
+	now := timeNow()
+	// Hasil List terbaru lebih dulu sehingga order pending paling akhir dipakai.
+	for _, order := range orders {
+		if order.ExpiresAt.After(now) {
+			return order
+		}
+	}
+	return nil
 }
 
 // statusView melengkapi status order dengan langganan aktif mitra.

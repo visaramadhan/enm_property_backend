@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -86,6 +87,10 @@ type UserRepository interface {
 	GetByFirebaseUID(uid string) (*models.User, error)
 	GetByEmail(email string) (*models.User, error)
 	List(q ListQuery) ([]*models.User, int, error)
+	// DeleteUserCascade menghapus akun beserta seluruh data terkait secara
+	// atomik. partnerID boleh kosong bila pengguna bukan mitra, dan propertyIDs
+	// berisi seluruh properti mitra (termasuk yang terhapus lunak).
+	DeleteUserCascade(ctx context.Context, userID, partnerID string, propertyIDs []string) error
 }
 
 // PartnerRepository menangani akses data kemitraan.
@@ -172,6 +177,9 @@ type PropertyRepository interface {
 	CountByPartner(partnerID string, statuses ...models.PropertyStatus) int
 	UpdateStatusByPartner(partnerID string, from, to models.PropertyStatus) int
 	List(q ListQuery) ([]*models.Property, int, error)
+	// ListAllByPartner mengembalikan seluruh properti mitra termasuk yang sudah
+	// dihapus lunak, dipakai saat pembersihan data akun.
+	ListAllByPartner(partnerID string) ([]*models.Property, error)
 
 	CreatePhoto(photo *models.PropertyPhoto) error
 	UpdatePhoto(photo *models.PropertyPhoto) error

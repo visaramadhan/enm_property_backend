@@ -43,3 +43,12 @@ func (h *MeHandler) Update(c *gin.Context) {
 	}
 	httpx.OK(c, view)
 }
+
+// Delete menghapus akun pengguna yang sedang masuk beserta seluruh data terkait.
+func (h *MeHandler) Delete(c *gin.Context) {
+	if err := h.services.Account.DeleteAccount(c.Request.Context(), middleware.CurrentUser(c), requestMeta(c)); err != nil {
+		httpx.Respond(c, err)
+		return
+	}
+	httpx.NoContent(c)
+}

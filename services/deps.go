@@ -39,6 +39,7 @@ type RequestMeta struct {
 type Services struct {
 	Auth         *AuthService
 	User         *UserService
+	Account      *AccountService
 	Partner      *PartnerService
 	Plan         *PlanService
 	Category     *CategoryService
@@ -84,6 +85,7 @@ func NewServices(deps Deps) *Services {
 	services := &Services{
 		Auth:         &AuthService{deps: deps},
 		User:         &UserService{deps: deps},
+		Account:      &AccountService{deps: deps},
 		Partner:      partner,
 		Plan:         &PlanService{deps: deps},
 		Category:     &CategoryService{deps: deps},

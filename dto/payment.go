@@ -106,6 +106,9 @@ type ChargeRequest struct {
 // PaymentView adalah respons instruksi pembayaran QRIS/VA untuk satu order.
 //
 // Halaman pembayaran memakai QRString/QRURL untuk QRIS dan Number untuk VA.
+// SnapToken diteruskan agar halaman juga dapat menawarkan pembayaran lewat
+// popup Snap (kanal yang sama dengan halaman Paket & Langganan), sehingga mitra
+// tetap dapat membayar bila kanal QRIS/VA Core API belum diaktifkan di Midtrans.
 type PaymentView struct {
 	Order        OrderView  `json:"order"`
 	Method       string     `json:"method"`
@@ -118,6 +121,7 @@ type PaymentView struct {
 	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
 	IsPaid       bool       `json:"is_paid"`
 	CanRetry     bool       `json:"can_retry"`
+	SnapToken    string     `json:"snap_token,omitempty"`
 }
 
 // NewPaymentView membentuk instruksi pembayaran dari entitas order.
@@ -137,6 +141,7 @@ func NewPaymentView(order *models.Order) PaymentView {
 		QRString:     order.PaymentQRString,
 		ExpiresAt:    order.PaymentExpiresAt,
 		IsPaid:       order.IsPaid(),
+		SnapToken:    order.SnapToken,
 	}
 }
 

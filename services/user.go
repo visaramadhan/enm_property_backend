@@ -206,6 +206,22 @@ func (s *UserService) ResetPassword(ctx context.Context, id string) (string, err
 	return link, nil
 }
 
+// Delete menghapus akun pengguna beserta seluruh data terkait atas permintaan
+// superadmin. Kaskadenya sama dengan penghapusan akun mandiri sehingga tidak
+// ada properti, foto, atau transaksi yang menggantung.
+func (s *UserService) Delete(ctx context.Context, id string, meta RequestMeta) error {
+	user, err := s.deps.Repos.Users.GetByID(id)
+	if err != nil {
+		if database.IsNotFound(err) {
+			return httpx.NotFound("Pengguna tidak ditemukan")
+		}
+		return httpx.Internal(err)
+	}
+
+	account := &AccountService{deps: s.deps}
+	return account.purgeUser(ctx, user, meta, "Penghapusan akun oleh admin")
+}
+
 // createFirebaseUser membuat akun Firebase, atau UID lokal saat kredensial
 // Firebase belum tersedia pada lingkungan pengembangan.
 func (s *UserService) createFirebaseUser(ctx context.Context, email string, req dto.AdminCreateUserRequest) (string, error) {

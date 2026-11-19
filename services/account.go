@@ -16,12 +16,18 @@ type AccountService struct {
 	deps Deps
 }
 
-// DeleteAccount menghapus akun pengguna yang sedang masuk beserta seluruh data
-// terkait: profil mitra, properti (termasuk yang sudah dihapus lunak), foto,
-// favorit, langganan, order, dan bukti persetujuan. Setelah data DB terhapus
-// (dalam satu transaksi), akun Firebase serta berkas foto fisik dibersihkan
-// secara best-effort agar kegagalan pihak ketiga tidak membatalkan permintaan.
+// DeleteAccount menghapus akun pengguna yang sedang masuk (right to erasure).
 func (s *AccountService) DeleteAccount(ctx context.Context, user *models.User, meta RequestMeta) error {
+	return s.purgeUser(ctx, user, meta, "Penghapusan akun oleh pengguna")
+}
+
+// purgeUser menghapus akun pengguna beserta seluruh data terkait: profil mitra,
+// properti (termasuk yang sudah dihapus lunak), foto, favorit, langganan, order,
+// dan bukti persetujuan. Setelah data DB terhapus (dalam satu transaksi), akun
+// Firebase serta berkas foto fisik dibersihkan secara best-effort agar kegagalan
+// pihak ketiga tidak membatalkan permintaan. `note` mengisi audit log sehingga
+// penghapusan mandiri dan oleh admin dapat dibedakan.
+func (s *AccountService) purgeUser(ctx context.Context, user *models.User, meta RequestMeta, note string) error {
 	if user == nil {
 		return httpx.Unauthorized("Sesi pengguna tidak ditemukan")
 	}
@@ -75,7 +81,7 @@ func (s *AccountService) DeleteAccount(ctx context.Context, user *models.User, m
 		Action:    models.AuditActionDelete,
 		Entity:    "user",
 		EntityID:  user.ID,
-		Note:      "Penghapusan akun oleh pengguna",
+		Note:      note,
 		IPAddress: meta.IPAddress,
 		UserAgent: meta.UserAgent,
 		CreatedAt: timeNow(),

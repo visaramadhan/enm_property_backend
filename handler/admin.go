@@ -487,6 +487,21 @@ func (h *AdminUserHandler) ResetPassword(c *gin.Context) {
 	httpx.OK(c, gin.H{"reset_link": link})
 }
 
+// Delete menghapus akun pengguna beserta seluruh data terkait (kaskade) atas
+// permintaan superadmin; jejak audit disimpan oleh layanan akun.
+func (h *AdminUserHandler) Delete(c *gin.Context) {
+	var params dto.IDParam
+	if !middleware.BindURI(c, &params) {
+		return
+	}
+
+	if err := h.services.User.Delete(c.Request.Context(), params.ID, requestMeta(c)); err != nil {
+		httpx.Respond(c, err)
+		return
+	}
+	httpx.NoContent(c)
+}
+
 // AdminPlanHandler mengelola paket langganan.
 type AdminPlanHandler struct {
 	services *services.Services

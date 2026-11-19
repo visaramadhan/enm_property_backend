@@ -298,6 +298,7 @@ func New(deps Deps) *gin.Engine {
 	super.PUT("/users/:id", adminUserHandler.Update)
 	super.PATCH("/users/:id/status", adminUserHandler.SetStatus)
 	super.POST("/users/:id/reset-password", adminUserHandler.ResetPassword)
+	super.DELETE("/users/:id", adminUserHandler.Delete)
 
 	super.POST("/packages", adminPlanHandler.Create)
 	super.PUT("/packages/:id", adminPlanHandler.Update)

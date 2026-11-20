@@ -131,6 +131,36 @@ func (s *MediaService) UploadPhotos(ctx context.Context, partner *models.Partner
 	}, nil
 }
 
+// UploadKTP menyimpan foto KTP mitra (dipakai saat pendaftaran mitra).
+//
+// Berkas divalidasi dan diubah ukurannya seperti foto properti, lalu disimpan
+// pada folder khusus pengguna. Nilai balik hanya URL publik karena pendaftaran
+// mitra menyimpan URL tersebut pada kolom partners.ktp_photo_url.
+func (s *MediaService) UploadKTP(ctx context.Context, userID string, file *multipart.FileHeader) (dto.UploadKTPResponse, error) {
+	if strings.TrimSpace(userID) == "" {
+		return dto.UploadKTPResponse{}, httpx.Unauthorized("Sesi pengguna tidak ditemukan")
+	}
+	if err := s.validateFile(file); err != nil {
+		return dto.UploadKTPResponse{}, err
+	}
+
+	raw, err := readUpload(file)
+	if err != nil {
+		return dto.UploadKTPResponse{}, err
+	}
+	processed, _, _, err := processImage(raw)
+	if err != nil {
+		return dto.UploadKTPResponse{}, err
+	}
+
+	objectPath := path.Join("ktp", userID, newID()+".jpg")
+	url, err := s.deps.Storage.Save(ctx, objectPath, processed)
+	if err != nil {
+		return dto.UploadKTPResponse{}, httpx.Internal(err)
+	}
+	return dto.UploadKTPResponse{URL: url}, nil
+}
+
 // DeletePhoto menghapus satu foto properti beserta berkasnya pada storage.
 func (s *MediaService) DeletePhoto(ctx context.Context, partner *models.Partner, propertyID, photoID string) error {
 	property, err := s.ownedProperty(partner, propertyID)

@@ -35,6 +35,13 @@ type LandingContentView struct {
 	FAQSubtitle        string           `json:"faq_subtitle"`
 	FAQItems           []LandingFAQItem `json:"faq_items"`
 
+	// Identitas kaki halaman (footer).
+	FooterBrandInitial string              `json:"footer_brand_initial"`
+	FooterBrandName    string              `json:"footer_brand_name"`
+	FooterDescription  string              `json:"footer_description"`
+	FooterCopyright    string              `json:"footer_copyright"`
+	FooterLinks        []LandingFooterLink `json:"footer_links"`
+
 	// Varian bahasa Inggris (khusus halaman landing /en). Nilai kosong berarti
 	// tampilan Inggris memakai teks bawaan komponen.
 	HeroTitleEN       string `json:"hero_title_en"`
@@ -57,6 +64,11 @@ type LandingContentView struct {
 	FAQSubtitleEN        string           `json:"faq_subtitle_en"`
 	FAQItemsEN           []LandingFAQItem `json:"faq_items_en"`
 
+	// Varian Inggris teks footer (nama/inisial brand tidak diterjemahkan).
+	FooterDescriptionEN string              `json:"footer_description_en"`
+	FooterCopyrightEN   string              `json:"footer_copyright_en"`
+	FooterLinksEN       []LandingFooterLink `json:"footer_links_en"`
+
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
@@ -68,6 +80,13 @@ type LandingFAQItem struct {
 	Jawab string `json:"jawab" validate:"required,max=1000"`
 }
 
+// LandingFooterLink adalah satu tautan navigasi pada kaki halaman landing.
+// Disimpan sebagai JSON sehingga urutan dan pasangan label-href tetap terjaga.
+type LandingFooterLink struct {
+	Label string `json:"label" validate:"required,max=40"`
+	Href  string `json:"href" validate:"required,max=300"`
+}
+
 // UpdateLandingRequest adalah body PUT /admin/landing.
 //
 // Batas panjang mengikuti aturan SEO: meta_title 50-60 karakter,
@@ -75,7 +94,7 @@ type LandingFAQItem struct {
 // dan highlight_areas berisi 4-6 area prioritas.
 type UpdateLandingRequest struct {
 	HeroTitle       string   `json:"hero_title" validate:"required,max=70"`
-	HeroSubtitle    string   `json:"hero_subtitle" validate:"max=150"`
+	HeroSubtitle    string   `json:"hero_subtitle" validate:"max=300"`
 	HeroCTAText     string   `json:"hero_cta_text" validate:"max=40"`
 	HeroImageURL    string   `json:"hero_image_url" validate:"max=500"`
 	HeroImages      []string `json:"hero_images" validate:"max=4,dive,max=500"`
@@ -98,10 +117,18 @@ type UpdateLandingRequest struct {
 	FAQSubtitle        string           `json:"faq_subtitle" validate:"max=200"`
 	FAQItems           []LandingFAQItem `json:"faq_items" validate:"max=12,dive"`
 
+	// Identitas kaki halaman (footer). Semua opsional; nilai kosong berarti
+	// halaman memakai teks bawaan komponen.
+	FooterBrandInitial string              `json:"footer_brand_initial" validate:"max=8"`
+	FooterBrandName    string              `json:"footer_brand_name" validate:"max=60"`
+	FooterDescription  string              `json:"footer_description" validate:"max=300"`
+	FooterCopyright    string              `json:"footer_copyright" validate:"max=200"`
+	FooterLinks        []LandingFooterLink `json:"footer_links" validate:"max=8,dive"`
+
 	// Varian bahasa Inggris bersifat opsional (tanpa `required`) agar admin
 	// tetap dapat menyimpan walau terjemahan belum lengkap.
 	HeroTitleEN       string `json:"hero_title_en" validate:"max=70"`
-	HeroSubtitleEN    string `json:"hero_subtitle_en" validate:"max=150"`
+	HeroSubtitleEN    string `json:"hero_subtitle_en" validate:"max=300"`
 	HeroCTATextEN     string `json:"hero_cta_text_en" validate:"max=40"`
 	MetaTitleEN       string `json:"meta_title_en" validate:"max=60"`
 	MetaDescriptionEN string `json:"meta_description_en" validate:"max=160"`
@@ -119,6 +146,11 @@ type UpdateLandingRequest struct {
 	FAQTitleEN           string           `json:"faq_title_en" validate:"max=70"`
 	FAQSubtitleEN        string           `json:"faq_subtitle_en" validate:"max=200"`
 	FAQItemsEN           []LandingFAQItem `json:"faq_items_en" validate:"max=12,dive"`
+
+	// Varian Inggris teks footer (nama/inisial brand bersifat tetap).
+	FooterDescriptionEN string              `json:"footer_description_en" validate:"max=300"`
+	FooterCopyrightEN   string              `json:"footer_copyright_en" validate:"max=200"`
+	FooterLinksEN       []LandingFooterLink `json:"footer_links_en" validate:"max=8,dive"`
 }
 
 // LandingImageParam adalah parameter path jenis gambar landing yang diunggah.
@@ -182,6 +214,12 @@ func NewLandingContentView(items []*models.LandingContent) LandingContentView {
 		FAQSubtitle:        values[models.LandingFAQSubtitle],
 		FAQItems:           DecodeFAQItems(values[models.LandingFAQItems]),
 
+		FooterBrandInitial: values[models.LandingFooterBrandInitial],
+		FooterBrandName:    values[models.LandingFooterBrandName],
+		FooterDescription:  values[models.LandingFooterDescription],
+		FooterCopyright:    values[models.LandingFooterCopyright],
+		FooterLinks:        DecodeFooterLinks(values[models.LandingFooterLinks]),
+
 		HeroTitleEN:       values[models.LandingHeroTitleEN],
 		HeroSubtitleEN:    values[models.LandingHeroSubtitleEN],
 		HeroCTATextEN:     values[models.LandingHeroCTATextEN],
@@ -201,6 +239,10 @@ func NewLandingContentView(items []*models.LandingContent) LandingContentView {
 		FAQTitleEN:           values[models.LandingFAQTitleEN],
 		FAQSubtitleEN:        values[models.LandingFAQSubtitleEN],
 		FAQItemsEN:           DecodeFAQItems(values[models.LandingFAQItemsEN]),
+
+		FooterDescriptionEN: values[models.LandingFooterDescriptionEN],
+		FooterCopyrightEN:   values[models.LandingFooterCopyrightEN],
+		FooterLinksEN:       DecodeFooterLinks(values[models.LandingFooterLinksEN]),
 
 		UpdatedAt: updatedAt,
 	}
@@ -257,6 +299,34 @@ func DecodeFAQItems(raw string) []LandingFAQItem {
 	items := []LandingFAQItem{}
 	if err := json.Unmarshal([]byte(trimmed), &items); err != nil {
 		return []LandingFAQItem{}
+	}
+	return items
+}
+
+// EncodeFooterLinks menyimpan daftar tautan footer sebagai JSON agar urutan
+// dan pasangan label-href tetap terjaga di kolom kunci-nilai.
+func EncodeFooterLinks(items []LandingFooterLink) string {
+	if len(items) == 0 {
+		return "[]"
+	}
+	encoded, err := json.Marshal(items)
+	if err != nil {
+		return "[]"
+	}
+	return string(encoded)
+}
+
+// DecodeFooterLinks membaca daftar tautan footer dari nilai JSON. Nilai yang
+// tidak valid atau kosong menghasilkan daftar kosong agar footer memakai
+// tautan bawaan komponen alih-alih gagal dirender.
+func DecodeFooterLinks(raw string) []LandingFooterLink {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return []LandingFooterLink{}
+	}
+	items := []LandingFooterLink{}
+	if err := json.Unmarshal([]byte(trimmed), &items); err != nil {
+		return []LandingFooterLink{}
 	}
 	return items
 }

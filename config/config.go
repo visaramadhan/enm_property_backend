@@ -106,7 +106,7 @@ type Storage struct {
 	LocalDir             string   `env:"LOCAL_DIR" envDefault:"./storage"`
 	PublicBaseURL        string   `env:"PUBLIC_BASE_URL" envDefault:"http://localhost:8080/uploads"`
 	MaxUploadBytes       int64    `env:"MAX_UPLOAD_BYTES" envDefault:"5242880"`
-	MaxPhotosPerProperty int      `env:"MAX_PHOTOS_PER_PROPERTY" envDefault:"10"`
+	MaxPhotosPerProperty int      `env:"MAX_PHOTOS_PER_PROPERTY" envDefault:"20"`
 	AllowedMimeTypes     []string `env:"ALLOWED_MIME_TYPES" envDefault:"image/jpeg,image/png,image/webp" envSeparator:","`
 }
 

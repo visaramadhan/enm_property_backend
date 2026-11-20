@@ -227,6 +227,13 @@ func New(deps Deps) *gin.Engine {
 		vendorMediaHandler.Upload,
 	)
 
+	// Unggah foto KTP saat pendaftaran mitra (sebelum profil mitra dibuat).
+	uploads.POST("/partners/ktp",
+		authRequired,
+		middleware.UploadGuard(cfg.Storage),
+		partnerHandler.UploadKTP,
+	)
+
 	// --- Admin dan Superadmin ----------------------------------------------
 	admin := api.Group("/admin",
 		authRequired,

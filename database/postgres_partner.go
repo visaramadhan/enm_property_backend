@@ -10,7 +10,7 @@ import (
 )
 
 const partnerColumns = `id, user_id, business_name, pic_name, phone, email, address, city, ` +
-	`province, status, suspended_reason, agreement_accepted_at, joined_at, created_at, updated_at`
+	`province, ktp_photo_url, status, suspended_reason, agreement_accepted_at, joined_at, created_at, updated_at`
 
 type postgresPartnerRepository struct{ pool pgxPool }
 
@@ -19,8 +19,8 @@ func scanPartner(row pgx.Row) (*models.Partner, error) {
 	var partner models.Partner
 	if err := row.Scan(
 		&partner.ID, &partner.UserID, &partner.BusinessName, &partner.PICName, &partner.Phone,
-		&partner.Email, &partner.Address, &partner.City, &partner.Province, &partner.Status,
-		&partner.SuspendedReason, &partner.AgreementAcceptedAt, &partner.JoinedAt,
+		&partner.Email, &partner.Address, &partner.City, &partner.Province, &partner.KTPPhotoURL,
+		&partner.Status, &partner.SuspendedReason, &partner.AgreementAcceptedAt, &partner.JoinedAt,
 		&partner.CreatedAt, &partner.UpdatedAt,
 	); err != nil {
 		return nil, err
@@ -31,11 +31,11 @@ func scanPartner(row pgx.Row) (*models.Partner, error) {
 func (r *postgresPartnerRepository) Create(partner *models.Partner) error {
 	ctx := context.Background()
 	const query = `INSERT INTO partners (` + partnerColumns + `)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`
 	_, err := r.pool.Exec(ctx, query,
 		partner.ID, partner.UserID, partner.BusinessName, partner.PICName, partner.Phone,
-		partner.Email, partner.Address, partner.City, partner.Province, string(partner.Status),
-		partner.SuspendedReason, partner.AgreementAcceptedAt, partner.JoinedAt,
+		partner.Email, partner.Address, partner.City, partner.Province, partner.KTPPhotoURL,
+		string(partner.Status), partner.SuspendedReason, partner.AgreementAcceptedAt, partner.JoinedAt,
 		partner.CreatedAt, partner.UpdatedAt,
 	)
 	return err
@@ -45,13 +45,14 @@ func (r *postgresPartnerRepository) Update(partner *models.Partner) error {
 	ctx := context.Background()
 	const query = `UPDATE partners SET
 		user_id = $2, business_name = $3, pic_name = $4, phone = $5, email = $6,
-		address = $7, city = $8, province = $9, status = $10, suspended_reason = $11,
-		agreement_accepted_at = $12, joined_at = $13, created_at = $14, updated_at = $15
+		address = $7, city = $8, province = $9, ktp_photo_url = $10, status = $11,
+		suspended_reason = $12, agreement_accepted_at = $13, joined_at = $14,
+		created_at = $15, updated_at = $16
 		WHERE id = $1`
 	tag, err := r.pool.Exec(ctx, query,
 		partner.ID, partner.UserID, partner.BusinessName, partner.PICName, partner.Phone,
-		partner.Email, partner.Address, partner.City, partner.Province, string(partner.Status),
-		partner.SuspendedReason, partner.AgreementAcceptedAt, partner.JoinedAt,
+		partner.Email, partner.Address, partner.City, partner.Province, partner.KTPPhotoURL,
+		string(partner.Status), partner.SuspendedReason, partner.AgreementAcceptedAt, partner.JoinedAt,
 		partner.CreatedAt, partner.UpdatedAt,
 	)
 	if err != nil {

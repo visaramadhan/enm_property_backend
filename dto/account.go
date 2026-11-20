@@ -98,6 +98,7 @@ type PartnerView struct {
 	Address             string     `json:"address"`
 	City                string     `json:"city"`
 	Province            string     `json:"province"`
+	KTPPhotoURL         string     `json:"ktp_photo_url"`
 	Status              string     `json:"status"`
 	StatusLabel         string     `json:"status_label"`
 	SuspendedReason     string     `json:"suspended_reason,omitempty"`
@@ -122,6 +123,7 @@ func NewPartnerView(partner *models.Partner) PartnerView {
 		Address:             partner.Address,
 		City:                partner.City,
 		Province:            partner.Province,
+		KTPPhotoURL:         partner.KTPPhotoURL,
 		Status:              string(partner.Status),
 		StatusLabel:         partner.Status.Label(),
 		SuspendedReason:     partner.SuspendedReason,
@@ -141,6 +143,14 @@ type RegisterPartnerRequest struct {
 	Address      string `json:"address" validate:"required,max=255"`
 	City         string `json:"city" validate:"required,max=100"`
 	Province     string `json:"province" validate:"required,max=100"`
+	// KTPPhotoURL adalah URL foto KTP hasil unggahan; wajib diisi saat
+	// pendaftaran mitra (ditegakkan di lapisan service).
+	KTPPhotoURL string `json:"ktp_photo_url" validate:"omitempty,max=500"`
+}
+
+// UploadKTPResponse adalah respons POST /partners/ktp.
+type UploadKTPResponse struct {
+	URL string `json:"url"`
 }
 
 // UpdatePartnerRequest adalah body PUT /vendor/profile.

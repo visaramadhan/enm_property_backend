@@ -37,6 +37,15 @@ const (
 	// Bila kosong, halaman memakai teks bawaan komponen.
 	LandingFAQItems = "faq_items"
 
+	// Identitas kaki halaman (footer). Nilai kosong berarti halaman memakai
+	// teks bawaan komponen.
+	LandingFooterBrandInitial = "footer_brand_initial"
+	LandingFooterBrandName    = "footer_brand_name"
+	LandingFooterDescription  = "footer_description"
+	LandingFooterCopyright    = "footer_copyright"
+	// Daftar tautan navigasi footer (JSON [{label,href}]).
+	LandingFooterLinks = "footer_links"
+
 	// Varian bahasa Inggris (English). Hanya berlaku untuk halaman landing
 	// versi /en. Nilai kosong berarti tampilan Inggris memakai teks bawaan
 	// yang tertanam di komponen, sehingga halaman tidak pernah kosong.
@@ -60,6 +69,12 @@ const (
 	LandingFAQSubtitleEN        = "faq_subtitle_en"
 	// Varian Inggris daftar pertanyaan umum (JSON [{tanya,jawab}]).
 	LandingFAQItemsEN = "faq_items_en"
+
+	// Varian Inggris teks footer (deskripsi, hak cipta, tautan). Nama dan
+	// inisial brand tidak diterjemahkan karena merupakan identitas tetap.
+	LandingFooterDescriptionEN = "footer_description_en"
+	LandingFooterCopyrightEN   = "footer_copyright_en"
+	LandingFooterLinksEN       = "footer_links_en"
 )
 
 // LandingContent adalah satu pasangan kunci-nilai konten landing page.

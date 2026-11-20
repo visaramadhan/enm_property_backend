@@ -40,6 +40,7 @@ type Partner struct {
 	Address             string        `json:"address"`
 	City                string        `json:"city"`
 	Province            string        `json:"province"`
+	KTPPhotoURL         string        `json:"ktp_photo_url"`
 	Status              PartnerStatus `json:"status"`
 	SuspendedReason     string        `json:"suspended_reason,omitempty"`
 	AgreementAcceptedAt *time.Time    `json:"agreement_accepted_at,omitempty"`

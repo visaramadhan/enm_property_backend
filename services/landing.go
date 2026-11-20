@@ -63,6 +63,12 @@ func (s *LandingService) Update(actorID string, req dto.UpdateLandingRequest) (d
 		models.LandingFAQSubtitle:        strings.TrimSpace(req.FAQSubtitle),
 		models.LandingFAQItems:           dto.EncodeFAQItems(cleanFAQ(req.FAQItems)),
 
+		models.LandingFooterBrandInitial: strings.TrimSpace(req.FooterBrandInitial),
+		models.LandingFooterBrandName:    strings.TrimSpace(req.FooterBrandName),
+		models.LandingFooterDescription:  strings.TrimSpace(req.FooterDescription),
+		models.LandingFooterCopyright:    strings.TrimSpace(req.FooterCopyright),
+		models.LandingFooterLinks:        dto.EncodeFooterLinks(cleanFooterLinks(req.FooterLinks)),
+
 		models.LandingHeroTitleEN:       strings.TrimSpace(req.HeroTitleEN),
 		models.LandingHeroSubtitleEN:    strings.TrimSpace(req.HeroSubtitleEN),
 		models.LandingHeroCTATextEN:     strings.TrimSpace(req.HeroCTATextEN),
@@ -82,6 +88,10 @@ func (s *LandingService) Update(actorID string, req dto.UpdateLandingRequest) (d
 		models.LandingFAQTitleEN:           strings.TrimSpace(req.FAQTitleEN),
 		models.LandingFAQSubtitleEN:        strings.TrimSpace(req.FAQSubtitleEN),
 		models.LandingFAQItemsEN:           dto.EncodeFAQItems(cleanFAQ(req.FAQItemsEN)),
+
+		models.LandingFooterDescriptionEN: strings.TrimSpace(req.FooterDescriptionEN),
+		models.LandingFooterCopyrightEN:   strings.TrimSpace(req.FooterCopyrightEN),
+		models.LandingFooterLinksEN:       dto.EncodeFooterLinks(cleanFooterLinks(req.FooterLinksEN)),
 	}
 
 	for key, value := range values {
@@ -198,6 +208,21 @@ func cleanFAQ(items []dto.LandingFAQItem) []dto.LandingFAQItem {
 			continue
 		}
 		hasil = append(hasil, dto.LandingFAQItem{Tanya: tanya, Jawab: jawab})
+	}
+	return hasil
+}
+
+// cleanFooterLinks membuang tautan footer yang tidak lengkap (label atau href
+// kosong) tanpa mengubah urutan.
+func cleanFooterLinks(items []dto.LandingFooterLink) []dto.LandingFooterLink {
+	hasil := make([]dto.LandingFooterLink, 0, len(items))
+	for _, item := range items {
+		label := strings.TrimSpace(item.Label)
+		href := cleanURL(item.Href)
+		if label == "" || href == "" {
+			continue
+		}
+		hasil = append(hasil, dto.LandingFooterLink{Label: label, Href: href})
 	}
 	return hasil
 }

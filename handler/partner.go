@@ -34,6 +34,28 @@ func (h *PartnerHandler) Register(c *gin.Context) {
 	httpx.Created(c, dto.NewPartnerView(partner))
 }
 
+// UploadKTP menyimpan foto KTP mitra saat pendaftaran kemitraan.
+func (h *PartnerHandler) UploadKTP(c *gin.Context) {
+	user := middleware.CurrentUser(c)
+	if user == nil {
+		httpx.Respond(c, httpx.Unauthorized("Sesi pengguna tidak ditemukan"))
+		return
+	}
+
+	files, err := uploadedFiles(c)
+	if err != nil || len(files) == 0 {
+		httpx.Respond(c, httpx.BadRequest("Foto KTP tidak ditemukan"))
+		return
+	}
+
+	response, err := h.services.Media.UploadKTP(c.Request.Context(), user.ID, files[0])
+	if err != nil {
+		httpx.Respond(c, err)
+		return
+	}
+	httpx.Created(c, response)
+}
+
 // Profile mengembalikan profil mitra pengguna yang sedang masuk.
 func (h *PartnerHandler) Profile(c *gin.Context) {
 	view, err := h.services.Partner.GetProfile(middleware.CurrentUser(c))

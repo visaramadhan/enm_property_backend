@@ -28,6 +28,11 @@ func (s *PartnerService) Register(ctx context.Context, user *models.User, req dt
 		return nil, httpx.Conflict("Akun Anda sudah terdaftar sebagai mitra")
 	}
 
+	ktpURL := strings.TrimSpace(req.KTPPhotoURL)
+	if ktpURL == "" {
+		return nil, httpx.Unprocessable("Foto KTP wajib diunggah saat pendaftaran mitra")
+	}
+
 	now := timeNow()
 	partner := &models.Partner{
 		ID:        newID(),
@@ -38,6 +43,7 @@ func (s *PartnerService) Register(ctx context.Context, user *models.User, req dt
 		UpdatedAt: now,
 	}
 	s.applyProfile(partner, req.BusinessName, req.PICName, req.Phone, req.Email, req.Address, req.City, req.Province)
+	partner.KTPPhotoURL = ktpURL
 
 	if err := s.deps.Repos.Partners.Create(partner); err != nil {
 		return nil, httpx.Internal(err)

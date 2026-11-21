@@ -349,7 +349,14 @@ func (s *PropertyService) AdminCreateForFree(req dto.AdminCreatePropertyRequest)
 	if req.Publish {
 		now := timeNow()
 		property.Status = models.PropertyStatusActive
-		property.PublishedAt = &now
+		if property.PublishedAt == nil {
+			property.PublishedAt = &now
+		}
+	} else if req.Status == "" {
+		// Tanpa permintaan publikasi eksplisit, listing buatan admin tetap draf
+		// (perilaku lama) meski `build` kini menayangkan listing mitra secara bawaan.
+		property.Status = models.PropertyStatusDraft
+		property.PublishedAt = nil
 	}
 	if err := s.deps.Repos.Properties.Create(property); err != nil {
 		return dto.PropertyDetail{}, httpx.Internal(err)
@@ -474,9 +481,11 @@ func (s *PropertyService) build(partner *models.Partner, req dto.CreatePropertyR
 	}
 
 	now := timeNow()
-	status := models.PropertyStatusDraft
-	if req.Status == string(models.PropertyStatusActive) {
-		status = models.PropertyStatusActive
+	// Listing baru langsung tayang agar tampil di katalog publik tanpa perlu
+	// diubah manual; status draf hanya dipakai bila mitra memilihnya eksplisit.
+	status := models.PropertyStatusActive
+	if req.Status == string(models.PropertyStatusDraft) {
+		status = models.PropertyStatusDraft
 	}
 
 	property := &models.Property{

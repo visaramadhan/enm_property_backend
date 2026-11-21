@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"enmproperty/backend/database"
 	"enmproperty/backend/dto"
@@ -31,24 +34,41 @@ func (s *PaymentService) Checkout(ctx context.Context, user *models.User, req dt
 		return dto.CheckoutResponse{}, httpx.Unauthorized("Sesi pengguna tidak ditemukan")
 	}
 
-	plan, err := s.deps.Repos.Plans.GetBySlug(strings.TrimSpace(req.PackageSlug))
-	if err != nil {
-		if database.IsNotFound(err) {
-			return dto.CheckoutResponse{}, httpx.NotFound("Paket tidak ditemukan")
+	// Paket dan profil mitra tidak saling bergantung sehingga diambil secara
+	// paralel; langkah ini mendahului pemanggilan Midtrans sehingga memangkas
+	// waktu tunggu checkout sebelum token Snap dibuat.
+	var (
+		plan    *models.Plan
+		partner *models.Partner
+	)
+	grup, grupCtx := errgroup.WithContext(ctx)
+	grup.Go(func() error {
+		found, err := s.deps.Repos.Plans.GetBySlug(strings.TrimSpace(req.PackageSlug))
+		if err != nil {
+			if database.IsNotFound(err) {
+				return httpx.NotFound("Paket tidak ditemukan")
+			}
+			return httpx.Internal(err)
 		}
-		return dto.CheckoutResponse{}, httpx.Internal(err)
-	}
-	if !plan.IsActive {
-		return dto.CheckoutResponse{}, httpx.Unprocessable("Paket sedang tidak tersedia")
-	}
-
-	partner, err := s.resolvePartner(ctx, user, req.Partner)
-	if err != nil {
+		if !found.IsActive {
+			return httpx.Unprocessable("Paket sedang tidak tersedia")
+		}
+		plan = found
+		return nil
+	})
+	grup.Go(func() error {
+		found, err := s.resolvePartner(grupCtx, user, req.Partner)
+		if err != nil {
+			return err
+		}
+		partner = found
+		return nil
+	})
+	if err := grup.Wait(); err != nil {
 		return dto.CheckoutResponse{}, err
 	}
 
 	now := timeNow()
-	kind := s.resolveKind(partner.ID, plan, now)
 
 	// Paket gratis langsung aktif tanpa pembayaran sehingga mitra dapat segera
 	// memasang listing. Bila mitra sudah menyetujui perjanjian pada dialog
@@ -56,6 +76,7 @@ func (s *PaymentService) Checkout(ctx context.Context, user *models.User, req dt
 	// "Perjanjian Kemitraan" menampilkan status disetujui; kegagalan
 	// pencatatan tidak menahan aktivasi paket Gratis.
 	if plan.IsFree {
+		kind := s.resolveKind(partner.ID, plan, now)
 		if req.AgreeAgreement && s.settings.AgreementRequired() {
 			_, _ = s.agreements.Accept(user, partner, req.AgreementID, meta)
 		}
@@ -90,10 +111,29 @@ func (s *PaymentService) Checkout(ctx context.Context, user *models.User, req dt
 		}, nil
 	}
 
+	// Jenis order dan pencarian order pending hanya membaca data yang tidak
+	// saling bergantung sehingga dijalankan paralel untuk menghemat satu
+	// putaran kueri sebelum token Snap dibuat.
+	var (
+		kind     models.OrderKind
+		existing *models.Order
+	)
+	var baca sync.WaitGroup
+	baca.Add(2)
+	go func() {
+		defer baca.Done()
+		kind = s.resolveKind(partner.ID, plan, now)
+	}()
+	go func() {
+		defer baca.Done()
+		existing = s.pendingOrder(partner.ID, plan.ID)
+	}()
+	baca.Wait()
+
 	// Cegah order ganda: bila mitra masih memiliki order pending yang belum
 	// kedaluwarsa untuk paket yang sama, pakai kembali order tersebut beserta
 	// token Snap-nya alih-alih membuat order baru.
-	if existing := s.pendingOrder(partner.ID, plan.ID); existing != nil {
+	if existing != nil {
 		return dto.CheckoutResponse{
 			Order:           dto.NewOrderView(existing),
 			SnapToken:       existing.SnapToken,

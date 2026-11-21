@@ -66,6 +66,10 @@ func (s *AuthService) SetRoleClaim(ctx context.Context, uid string, role models.
 }
 
 // createFromToken membuat baris pengguna baru dari klaim token.
+//
+// Bila email sudah memiliki baris pengguna (mis. dibuat lewat metode masuk lain
+// atau `firebase_uid` belum sempat tertaut), UID Firebase ini ditautkan ke baris
+// tersebut alih-alih membuat akun duplikat atau menolak dengan konflik.
 func (s *AuthService) createFromToken(ctx context.Context, token *firebase.Token, now time.Time) (*models.User, error) {
 	role := models.Role(token.Role)
 	if !role.Valid() {
@@ -75,6 +79,18 @@ func (s *AuthService) createFromToken(ctx context.Context, token *firebase.Token
 	name := strings.TrimSpace(token.Name)
 	if name == "" {
 		name = displayNameFromEmail(email)
+	}
+
+	// Email tanpa pemetaan Firebase harus dicek tanpa menyentuh baris ber-email
+	// kosong yang juga tersimpan sebagai string kosong di basis data.
+	if email != "" {
+		existing, lookupErr := s.deps.Repos.Users.GetByEmail(email)
+		if lookupErr != nil && !database.IsNotFound(lookupErr) {
+			return nil, httpx.Internal(lookupErr)
+		}
+		if existing != nil {
+			return s.linkToToken(existing, token, now)
+		}
 	}
 
 	user := &models.User{
@@ -96,6 +112,40 @@ func (s *AuthService) createFromToken(ctx context.Context, token *firebase.Token
 		if _, lookupErr := s.deps.Repos.Users.GetByEmail(email); lookupErr == nil {
 			return nil, httpx.Conflict("Email sudah terdaftar dengan metode masuk lain")
 		}
+		return nil, httpx.Internal(err)
+	}
+	return user, nil
+}
+
+// linkToToken menautkan kredensial Firebase baru ke baris pengguna lama
+// berdasarkan email, melengkapi data profil yang masih kosong.
+func (s *AuthService) linkToToken(user *models.User, token *firebase.Token, now time.Time) (*models.User, error) {
+	// UID berbeda yang sudah tertaut menandakan akun Firebase lain memakai email
+	// yang sama; tautan otomatis tidak boleh mengambil alih baris tersebut.
+	if user.FirebaseUID != "" && user.FirebaseUID != token.UID {
+		return nil, httpx.Conflict("Email sudah terdaftar dengan metode masuk lain")
+	}
+
+	user.FirebaseUID = token.UID
+	if name := strings.TrimSpace(token.Name); name != "" && user.Name == "" {
+		user.Name = name
+	}
+	if user.Name == "" {
+		user.Name = displayNameFromEmail(user.Email)
+	}
+	if user.AvatarURL == "" && token.Picture != "" {
+		user.AvatarURL = token.Picture
+	}
+	if user.Phone == "" && token.PhoneNumber != "" {
+		user.Phone = normalizePhone(token.PhoneNumber)
+	}
+	if token.EmailVerified {
+		user.EmailVerified = true
+	}
+	user.LastLoginAt = &now
+	user.UpdatedAt = now
+
+	if err := s.deps.Repos.Users.Update(user); err != nil {
 		return nil, httpx.Internal(err)
 	}
 	return user, nil

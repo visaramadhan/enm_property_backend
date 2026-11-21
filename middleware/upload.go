@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
@@ -24,7 +25,7 @@ func UploadGuard(cfg config.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if totalLimit > 0 && c.Request.ContentLength > totalLimit {
 			httpx.Abort(c, http.StatusRequestEntityTooLarge, httpx.CodeBadRequest,
-				"Total ukuran berkas yang diunggah melebihi batas")
+				fmt.Sprintf("Total ukuran berkas yang diunggah melebihi batas %d MB", totalLimit/(1024*1024)))
 			return
 		}
 		c.Next()
@@ -37,7 +38,8 @@ func ValidateUploadedFile(file *multipart.FileHeader, cfg config.Storage) error 
 		return httpx.BadRequest("Berkas foto tidak ditemukan")
 	}
 	if cfg.MaxUploadBytes > 0 && file.Size > cfg.MaxUploadBytes {
-		return httpx.BadRequest("Ukuran foto melebihi batas yang diizinkan")
+		return httpx.BadRequest(fmt.Sprintf(
+			"Ukuran foto terlalu besar (maksimal %d MB)", cfg.MaxUploadBytes/(1024*1024)))
 	}
 	if !safeFileName(file.Filename) {
 		return httpx.BadRequest("Nama berkas tidak aman")
@@ -56,7 +58,9 @@ func ValidateUploadedFile(file *multipart.FileHeader, cfg config.Storage) error 
 
 	mime := strings.Split(detected.String(), ";")[0]
 	if !allowedMime(mime, cfg.AllowedMimeTypes) {
-		return httpx.BadRequest("Tipe berkas " + mime + " tidak diizinkan")
+		return httpx.BadRequest(fmt.Sprintf(
+			"Format berkas %s tidak didukung (diizinkan: %s)",
+			mime, strings.Join(cfg.AllowedMimeTypes, ", ")))
 	}
 	return nil
 }

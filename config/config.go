@@ -47,12 +47,23 @@ type App struct {
 }
 
 // HTTP mengatur batas waktu, ukuran body, dan graceful shutdown HTTP server.
+//
+// ReadTimeout/WriteTimeout sengaja besar (300s) agar unggahan foto berukuran
+// besar pada koneksi klien yang lambat tidak diputus di tengah jalan (selaras
+// `client_max_body_size 100M` dan `proxy_read_timeout 300s` di Nginx).
+// ReadHeaderTimeout tetap pendek untuk menangkal slowloris tanpa mengganggu
+// unggahan body yang besar.
 type HTTP struct {
-	Port            string        `env:"PORT" envDefault:"8080"`
-	ReadTimeout     time.Duration `env:"READ_TIMEOUT" envDefault:"10s"`
-	WriteTimeout    time.Duration `env:"WRITE_TIMEOUT" envDefault:"30s"`
-	IdleTimeout     time.Duration `env:"IDLE_TIMEOUT" envDefault:"60s"`
-	RequestTimeout  time.Duration `env:"REQUEST_TIMEOUT" envDefault:"30s"`
+	Port              string        `env:"PORT" envDefault:"8080"`
+	ReadTimeout       time.Duration `env:"READ_TIMEOUT" envDefault:"300s"`
+	ReadHeaderTimeout time.Duration `env:"READ_HEADER_TIMEOUT" envDefault:"15s"`
+	WriteTimeout      time.Duration `env:"WRITE_TIMEOUT" envDefault:"300s"`
+	IdleTimeout       time.Duration `env:"IDLE_TIMEOUT" envDefault:"60s"`
+	// RequestTimeout adalah batas waktu middleware Timeout untuk request biasa.
+	RequestTimeout time.Duration `env:"REQUEST_TIMEOUT" envDefault:"30s"`
+	// UploadTimeout adalah batas waktu middleware Timeout khusus route unggah
+	// berkas, terpisah dari RequestTimeout agar unggahan besar tidak dibatalkan.
+	UploadTimeout   time.Duration `env:"UPLOAD_TIMEOUT" envDefault:"300s"`
 	MaxBodyBytes    int64         `env:"MAX_BODY_BYTES" envDefault:"10485760"`
 	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"15s"`
 }

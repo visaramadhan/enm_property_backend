@@ -109,11 +109,12 @@ func main() {
 	}
 
 	server := &http.Server{
-		Addr:         ":" + cfg.HTTP.Port,
-		Handler:      engine,
-		ReadTimeout:  cfg.HTTP.ReadTimeout,
-		WriteTimeout: cfg.HTTP.WriteTimeout,
-		IdleTimeout:  cfg.HTTP.IdleTimeout,
+		Addr:              ":" + cfg.HTTP.Port,
+		Handler:           engine,
+		ReadTimeout:       cfg.HTTP.ReadTimeout,
+		ReadHeaderTimeout: cfg.HTTP.ReadHeaderTimeout,
+		WriteTimeout:      cfg.HTTP.WriteTimeout,
+		IdleTimeout:       cfg.HTTP.IdleTimeout,
 	}
 
 	go func() {

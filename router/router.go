@@ -87,6 +87,10 @@ func New(deps Deps) *gin.Engine {
 	generalLimit := middleware.RateLimit(cfg.RateLimit, cfg.RateLimit.Requests)
 	bodyLimit := middleware.BodyLimit(cfg.HTTP.MaxBodyBytes)
 	requestTimeout := middleware.Timeout(cfg.HTTP.RequestTimeout)
+	// Route unggah memakai batas waktu tersendiri yang jauh lebih panjang
+	// (UPLOAD_TIMEOUT, bawaan 300s) agar pengunggahan foto besar pada koneksi
+	// lambat tidak dibatalkan oleh middleware Timeout milik request biasa.
+	uploadTimeout := middleware.Timeout(cfg.HTTP.UploadTimeout)
 
 	// Route publik dan terautentikasi memakai batas body standar.
 	//
@@ -99,8 +103,9 @@ func New(deps Deps) *gin.Engine {
 	// respons tetap valid saat defer-nya berjalan.
 	api := engine.Group("/api/v1", generalLimit, requestTimeout, bodyLimit, middleware.Compress())
 	// Route unggah berkas tidak memakai batas body standar karena ukurannya
-	// dibatasi oleh UploadGuard dengan kuota tersendiri.
-	uploads := engine.Group("/api/v1", generalLimit, requestTimeout, middleware.Compress())
+	// dibatasi oleh UploadGuard dengan kuota tersendiri, dan memakai uploadTimeout
+	// (bukan requestTimeout) agar unggahan besar tidak dibatalkan.
+	uploads := engine.Group("/api/v1", generalLimit, uploadTimeout, middleware.Compress())
 
 	// --- Endpoint publik ---------------------------------------------------
 	api.GET("/health", healthHandler.Health)
